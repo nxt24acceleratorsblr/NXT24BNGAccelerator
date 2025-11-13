@@ -5,10 +5,10 @@ const Header = () => {
     <header className="header">
       <div className="header-container">
         <div className="logo">
-          <span className="logo-icon">🚀</span>
-          <h1>iPhone 17 Campaign Generator</h1>
+          <span className="logo-icon">📊</span>
+          <h1>Billing Reconcilliation</h1>
         </div>
-        <p className="tagline">AI-Powered Marketing in Minutes</p>
+        <p className="tagline">Automated Invoice Processing & Validation</p>
       </div>
     </header>
   );

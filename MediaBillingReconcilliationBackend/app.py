@@ -73,60 +73,64 @@ def upload_file():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Legacy endpoint for backward compatibility
-@app.route('/api/upload-pdf', methods=['POST'])
-def upload_pdf():
-    """Legacy PDF upload endpoint - redirects to universal upload"""
-    return upload_file()
-
-@app.route('/api/generate-campaign', methods=['POST'])
-def generate_campaign():
+@app.route('/api/extract-invoice', methods=['POST'])
+def extract_invoice():
     """
-    Generate marketing campaign using CrewAI agents
-    Accepts: product_name, pdf_content (optional)
-    Returns: Campaign results from all 4 agents
+    Extract structured invoice data using production notebook logic
+    Accepts: file (multipart) OR filepath (JSON)
+    Returns: Canonical invoice JSON with validation results
     """
     try:
-        data = request.json
-        product_name = data.get('product_name', 'iPhone 17')
-        pdf_content = data.get('pdf_content', '')
+        # Support both file upload and filepath
+        if 'file' in request.files:
+            file = request.files['file']
+            
+            if file.filename == '':
+                return jsonify({'error': 'No file selected'}), 400
+            
+            # Save uploaded file
+            file_path = UPLOAD_FOLDER / file.filename
+            file.save(file_path)
+            filepath = str(file_path)
+            
+            # Extract max_rows from form data when using multipart
+            max_rows = int(request.form.get('max_rows', 50))
         
-        # Import notebook functions
-        from services.campaign_notebook import run_campaign
+        elif request.is_json and request.json and 'filepath' in request.json:
+            filepath = request.json['filepath']
+            
+            if not Path(filepath).exists():
+                return jsonify({'error': f'File not found: {filepath}'}), 404
+            
+            # Extract max_rows from JSON when using filepath
+            max_rows = request.json.get('max_rows', 50)
         
-        # Run campaign
-        results = run_campaign(product_name, pdf_content)
+        else:
+            return jsonify({'error': 'No file or filepath provided'}), 400
+        
+        # Import invoice extractor
+        from services.invoice_extractor import extract_invoice_data, validate_extracted_data
+        
+        # Extract invoice data
+        print(f"🔍 Extracting invoice from: {filepath}")
+        invoice_data = extract_invoice_data(filepath, max_rows=max_rows)
+        
+        # Validate extracted data
+        validation = validate_extracted_data(invoice_data)
         
         return jsonify({
             'success': True,
-            'results': results
+            'invoice_data': invoice_data,
+            'validation': validation,
+            'filepath': filepath
         })
     
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/generate-research', methods=['POST'])
-def generate_research():
-    """
-    Generate market research only
-    Accepts: product_name, pdf_content (optional)
-    """
-    try:
-        data = request.json
-        product_name = data.get('product_name', 'iPhone 17')
-        pdf_content = data.get('pdf_content', '')
-        
-        from services.campaign_notebook import run_research_task
-        
-        result = run_research_task(product_name, pdf_content)
-        
+        import traceback
         return jsonify({
-            'success': True,
-            'research': result
-        })
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
 
 if __name__ == '__main__':
     print("🚀 Starting iPhone 17 Campaign Generator API...")

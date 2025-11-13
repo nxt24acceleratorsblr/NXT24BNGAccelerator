@@ -1,6 +1,5 @@
-import { useState } from 'react'
 import './App.css'
-import CampaignGenerator from './components/CampaignGenerator'
+import InvoiceExtractor from './components/InvoiceExtractor'
 import Header from './components/Header'
 import Footer from './components/Footer'
 
@@ -9,7 +8,7 @@ function App() {
     <div className="app">
       <Header />
       <main className="main-content">
-        <CampaignGenerator />
+        <InvoiceExtractor />
       </main>
       <Footer />
     </div>
