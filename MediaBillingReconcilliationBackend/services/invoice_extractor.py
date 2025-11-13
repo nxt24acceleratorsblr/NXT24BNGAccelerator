@@ -12,6 +12,8 @@ from typing import Dict, Any
 
 # File reading libraries
 import pdfplumber
+from PIL import Image
+import pytesseract
 
 # CrewAI imports
 from crewai import Agent, Task, Crew, Process, LLM
@@ -93,7 +95,7 @@ llm = LLM(
 # ============================================
 
 def read_pdf_content(pdf_path: str, max_pages: int = 5) -> str:
-    """Extract text from PDF files."""
+    """Extract text from PDF files with OCR fallback for image-based PDFs."""
     try:
         pages_text = []
         with pdfplumber.open(pdf_path) as pdf:
@@ -101,9 +103,27 @@ def read_pdf_content(pdf_path: str, max_pages: int = 5) -> str:
                 if i >= max_pages:
                     break
                 text = page.extract_text() or ""
+                
+                # If no text extracted, try OCR on the page image
+                if not text.strip():
+                    try:
+                        # Convert page to image and use OCR
+                        page_image = page.to_image(resolution=300).original
+                        text = pytesseract.image_to_string(page_image)
+                    except pytesseract.TesseractNotFoundError:
+                        text = """[ERROR: Tesseract OCR not installed]
+                        
+To install Tesseract:
+• macOS: brew install tesseract
+• Ubuntu/Debian: sudo apt-get install tesseract-ocr
+• Windows: Download from https://github.com/UB-Mannheim/tesseract/wiki"""
+                    except Exception as ocr_error:
+                        text = f"[OCR failed for page {i+1}: {str(ocr_error)}]"
+                
                 if text:
                     pages_text.append(f"--- Page {i+1} ---\n{text}")
-        return "\n\n".join(pages_text)
+        
+        return "\n\n".join(pages_text) if pages_text else "No text extracted from PDF"
     except Exception as e:
         return f"Error reading PDF: {str(e)}"
 
@@ -160,6 +180,25 @@ def read_csv_content(csv_path: str, max_rows=50) -> Dict[str, Any]:
         return {"error": str(e)}
 
 
+def read_image_content(image_path: str) -> str:
+    """Extract text from images using OCR."""
+    try:
+        image = Image.open(image_path)
+        text = pytesseract.image_to_string(image)
+        return text.strip() if text.strip() else "No text extracted from image"
+    except pytesseract.TesseractNotFoundError:
+        return """ERROR: Tesseract OCR is not installed.
+        
+To install Tesseract:
+        • macOS: brew install tesseract
+        • Ubuntu/Debian: sudo apt-get install tesseract-ocr
+        • Windows: Download from https://github.com/UB-Mannheim/tesseract/wiki
+        
+After installation, restart your application."""
+    except Exception as e:
+        return f"Error reading image: {str(e)}"
+
+
 def build_invoice_context(file_path: str, max_rows: int = 50) -> str:
     """Build formatted context from any invoice file type."""
     file_path_obj = Path(file_path)
@@ -196,6 +235,11 @@ def build_invoice_context(file_path: str, max_rows: int = 50) -> str:
             output.append(f"Columns: {', '.join(data['columns'])}")
             output.append(f"\nData Preview (first {max_rows} rows):")
             output.append(data['preview_text'])
+    elif suffix in ['.png', '.jpg', '.jpeg', '.bmp', '.tiff']:
+        output.append("TYPE: Image File (OCR Extraction)")
+        output.append("\nCONTENT:")
+        content = read_image_content(str(file_path))
+        output.append(content)
     else:
         output.append(f"ERROR: Unsupported file type: {suffix}")
     
@@ -212,8 +256,13 @@ invoice_extraction_agent = Agent(
     backstory="""You are an expert in media billing and invoice processing. 
     You understand advertising metrics (impressions, views, clicks), financial terms 
     (revenue, costs, discounts, profit), and how to extract data accurately from 
-    various invoice formats. You always follow the canonical schema strictly and 
-    never invent data - you use null for missing values.""",
+    various invoice formats including OCR-extracted text from images and scanned PDFs.
+    
+    You are skilled at handling noisy or imperfectly formatted text from OCR, identifying
+    patterns, and extracting meaningful data even when formatting is inconsistent.
+    You always follow the canonical schema strictly and never invent data - you use null 
+    for missing values. When dealing with OCR text, you intelligently parse tables and 
+    structured data even when spacing or alignment is imperfect.""",
     llm=llm,
     tools=[],
     verbose=True,
@@ -241,8 +290,10 @@ Extract structured invoice data from the provided file and map it to the canonic
 4. Map delivery metrics (impressions, views, clicks)
 5. Calculate implicit discounts if gross and net revenue differ
 6. Use null for missing values - DO NOT INVENT DATA
-7. Add clarifications to 'notes' field if needed
-8. Return ONLY valid JSON - no markdown, no explanations
+7. For OCR-extracted text: Look for patterns and table structures even if spacing/formatting is imperfect
+8. Handle OCR artifacts gracefully (e.g., misread characters, spacing issues)
+9. Add clarifications to 'notes' field if needed or if OCR quality affected extraction
+10. Return ONLY valid JSON - no markdown, no explanations
 
 **OUTPUT REQUIREMENT:**
 Return a single valid JSON object following the canonical schema exactly.
