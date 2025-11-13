@@ -15,6 +15,7 @@ const CampaignGenerator = () => {
     const icons: Record<string, string> = {
       pdf: '📄',
       csv: '📊',
+      excel: '📗',
       xml: '🗂️',
       image: '🖼️',
       text: '📝'
@@ -26,6 +27,7 @@ const CampaignGenerator = () => {
     const labels: Record<string, string> = {
       pdf: 'PDF Document',
       csv: 'CSV Spreadsheet',
+      excel: 'Excel Spreadsheet',
       xml: 'XML Data',
       image: 'Image File',
       text: 'Text File'
@@ -134,7 +136,7 @@ const CampaignGenerator = () => {
                 id="fileUpload"
                 type="file"
                 className="file-input"
-                accept=".pdf,.csv,.xml,.jpg,.jpeg,.png,.gif,.bmp,.txt"
+                accept=".pdf,.csv,.xlsx,.xls,.xml,.jpg,.jpeg,.png,.gif,.bmp,.txt"
                 onChange={handleFileUpload}
                 disabled={isGenerating}
               />
@@ -154,7 +156,7 @@ const CampaignGenerator = () => {
                     <span className="upload-icon">📤</span>
                     <p>Click to upload or drag and drop</p>
                     <p className="upload-hint">
-                      PDF, CSV, XML, or Image files • Max 10MB
+                      PDF, CSV, Excel, XML, or Image files • Max 10MB
                     </p>
                   </div>
                 )}

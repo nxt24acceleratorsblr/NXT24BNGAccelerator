@@ -30,6 +30,8 @@ def detect_file_type(filepath: str) -> str:
     type_mapping = {
         '.pdf': 'pdf',
         '.csv': 'csv',
+        '.xlsx': 'excel',
+        '.xls': 'excel',
         '.xml': 'xml',
         '.jpg': 'image',
         '.jpeg': 'image',
@@ -109,6 +111,44 @@ def parse_csv(filepath: str) -> Dict[str, Any]:
         return {
             'success': False,
             'error': f"CSV parsing failed: {str(e)}"
+        }
+
+def parse_excel(filepath: str) -> Dict[str, Any]:
+    """Parse Excel file (.xlsx, .xls) with intelligent sheet detection"""
+    try:
+        # Read Excel with pandas - supports both .xlsx and .xls
+        # openpyxl engine for .xlsx, xlrd for .xls (auto-detected)
+        df = pd.read_excel(filepath, sheet_name=0)  # Read first sheet
+        
+        # Get sheet names
+        excel_file = pd.ExcelFile(filepath)
+        sheet_names = excel_file.sheet_names
+        
+        # Convert to readable format
+        excel_text = f"Excel Data from sheet '{sheet_names[0]}' with {len(df)} rows and {len(df.columns)} columns:\n\n"
+        excel_text += df.to_string(index=False)
+        
+        # Use AI to extract product information
+        product_info = extract_product_info_with_ai(excel_text, "Excel")
+        
+        return {
+            'success': True,
+            'file_type': 'excel',
+            'raw_content': excel_text,
+            'parsed_data': product_info,
+            'metadata': {
+                'rows': len(df),
+                'columns': list(df.columns),
+                'sheets': sheet_names,
+                'active_sheet': sheet_names[0],
+                'parser': 'pandas_excel'
+            },
+            'dataframe_summary': df.head(10).to_dict()
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f"Excel parsing failed: {str(e)}"
         }
 
 def parse_xml(filepath: str) -> Dict[str, Any]:
@@ -238,6 +278,7 @@ def parse_file(filepath: str) -> Dict[str, Any]:
     parsers = {
         'pdf': parse_pdf,
         'csv': parse_csv,
+        'excel': parse_excel,
         'xml': parse_xml,
         'image': parse_image,
         'text': parse_pdf  # Reuse PDF parser for text files

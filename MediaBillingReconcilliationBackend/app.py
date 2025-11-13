@@ -131,6 +131,6 @@ def generate_research():
 if __name__ == '__main__':
     print("🚀 Starting iPhone 17 Campaign Generator API...")
     print(f"📁 Upload folder: {UPLOAD_FOLDER}")
-    print("📄 Supported file types: PDF, CSV, XML, Images (JPG, PNG, GIF, BMP)")
+    print("📄 Supported file types: PDF, CSV, Excel (.xlsx, .xls), XML, Images (JPG, PNG, GIF, BMP)")
     print("🌐 Server running on http://localhost:5000")
     app.run(debug=True, port=5000)
