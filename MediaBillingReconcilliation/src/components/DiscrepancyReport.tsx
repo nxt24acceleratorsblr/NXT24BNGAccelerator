@@ -9,7 +9,7 @@ interface Discrepancy {
   line: number;
   field: string;
   invoiceValue: any;
-  mappingValue: any;
+  plannedValue: any;
   difference: any;
   differencePercent?: number;
   severity: string;
@@ -40,7 +40,7 @@ const DiscrepancyReport: React.FC = () => {
           line: disc.extracted_line,
           field: fieldDisc.field,
           invoiceValue: fieldDisc.extracted_value,
-          mappingValue: fieldDisc.mapping_value,
+          plannedValue: fieldDisc.mapping_value,
           difference: fieldDisc.difference,
           differencePercent: fieldDisc.difference_percent,
           severity: fieldDisc.severity
@@ -272,7 +272,7 @@ const DiscrepancyReport: React.FC = () => {
                   <th>Line</th>
                   <th>Field</th>
                   <th>Invoice Value</th>
-                  <th>Mapping Value</th>
+                  <th>Planned Value</th>
                   <th>Difference</th>
                   <th>Severity</th>
                 </tr>
@@ -284,7 +284,7 @@ const DiscrepancyReport: React.FC = () => {
                     <td>{disc.line}</td>
                     <td className="field-cell">{disc.field}</td>
                     <td className="value-cell">{formatValue(disc.invoiceValue)}</td>
-                    <td className="value-cell">{formatValue(disc.mappingValue)}</td>
+                    <td className="value-cell">{formatValue(disc.plannedValue)}</td>
                     <td className="difference-cell">
                       {disc.differencePercent ? `${disc.differencePercent}%` : formatValue(disc.difference)}
                     </td>

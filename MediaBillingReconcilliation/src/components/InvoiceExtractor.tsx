@@ -586,7 +586,7 @@ const InvoiceExtractor: React.FC = () => {
                         <th>Campaign</th>
                         <th>Field</th>
                         <th>Extracted</th>
-                        <th>Expected</th>
+                        <th>Planned</th>
                         <th>Difference</th>
                         <th>Severity</th>
                       </tr>
@@ -597,7 +597,7 @@ const InvoiceExtractor: React.FC = () => {
                           <td>{disc.Campaign}</td>
                           <td>{disc.Field}</td>
                           <td>{disc['Extracted Value']}</td>
-                          <td>{disc['Expected Value']}</td>
+                          <td>{disc['Planned Value']}</td>
                           <td>{disc['Difference %'] !== 'N/A' ? `${disc['Difference %']}%` : disc.Difference}</td>
                           <td>
                             <span className={`severity-badge ${disc.Severity.toLowerCase()}`}>

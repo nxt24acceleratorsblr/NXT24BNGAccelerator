@@ -114,7 +114,7 @@ const DiscrepancyReview: React.FC = () => {
                   <th>Line</th>
                   <th>Field</th>
                   <th>Invoice Value</th>
-                  <th>Mapping Value</th>
+                  <th>Planned Value</th>
                   <th>Difference</th>
                   <th>Severity</th>
                 </tr>

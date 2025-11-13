@@ -438,15 +438,23 @@ def generate_discrepancy_report(fuzzy_matches: dict, vendor_name: str = None) ->
     
     for disc in fuzzy_matches.get('potential_discrepancies', []):
         for field_disc in disc.get('discrepancies', []):
+            field_name = field_disc.get('field')
+            
+            # Use more descriptive field name for duration
+            if field_name == 'duration_days':
+                display_field = 'Incorrect Duration Days'
+            else:
+                display_field = field_name
+            
             report_data.append({
                 'Vendor Name': vendor_name or 'Unknown',
                 'Source': 'Fuzzy Match',
                 'Mapping File': disc.get('mapping_file'),
                 'Campaign': disc.get('campaign'),
                 'Line ID': disc.get('extracted_line'),
-                'Field': field_disc.get('field'),
+                'Field': display_field,
                 'Extracted Value': field_disc.get('extracted_value'),
-                'Expected Value': field_disc.get('mapping_value'),
+                'Planned Value': field_disc.get('mapping_value'),
                 'Difference': field_disc.get('difference', 'N/A'),
                 'Difference %': field_disc.get('difference_percent', 'N/A'),
                 'Severity': field_disc.get('severity', 'UNKNOWN')
