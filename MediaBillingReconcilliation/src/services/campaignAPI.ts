@@ -51,3 +51,35 @@ export const extractInvoice = async (file: File, maxRows: number = 50): Promise<
 
   return response.data;
 };
+
+// Reconcile invoice data with mapping files - Phase 2
+export const reconcileInvoice = async (
+  extractedData: any,
+  options?: {
+    mapping_folder?: string;
+    string_threshold?: number;
+    number_tolerance?: number;
+  }
+): Promise<{
+  status: string;
+  extracted_data: any;
+  mapping_files_count: number;
+  fuzzy_matches: any;
+  discrepancy_report: any[];
+  report_path: string | null;
+  summary: {
+    total_line_items: number;
+    fuzzy_matches: number;
+    discrepancies: number;
+    unmatched: number;
+  };
+}> => {
+  const response = await axios.post(`${API_BASE_URL}/reconcile-invoice`, {
+    extracted_data: extractedData,
+    mapping_folder: options?.mapping_folder || '../MediaBillingNotebook/mapping',
+    string_threshold: options?.string_threshold || 0.8,
+    number_tolerance: options?.number_tolerance || 5,
+  });
+
+  return response.data;
+};

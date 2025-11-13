@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { extractInvoice } from '../services/campaignAPI';
+import { extractInvoice, reconcileInvoice } from '../services/campaignAPI';
 import { InvoiceExtractionResult } from '../types';
 import './InvoiceExtractor.css';
 
@@ -8,7 +8,9 @@ const InvoiceExtractor: React.FC = () => {
   const navigate = useNavigate();
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isReconciling, setIsReconciling] = useState(false);
   const [extractionResult, setExtractionResult] = useState<InvoiceExtractionResult | null>(null);
+  const [reconciliationResult, setReconciliationResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
 
@@ -57,6 +59,7 @@ const InvoiceExtractor: React.FC = () => {
 
     setIsExtracting(true);
     setError(null);
+    setReconciliationResult(null); // Reset reconciliation when re-extracting
 
     try {
       // For now, extract the first file. In future, handle multiple files
@@ -67,6 +70,31 @@ const InvoiceExtractor: React.FC = () => {
       console.error('Extraction error:', err);
     } finally {
       setIsExtracting(false);
+    }
+  };
+
+  const handleReconcile = async () => {
+    if (!extractionResult) {
+      setError('Please extract invoice data first');
+      return;
+    }
+
+    setIsReconciling(true);
+    setError(null);
+
+    try {
+      const result = await reconcileInvoice(extractionResult.invoice_data, {
+        mapping_folder: '../MediaBillingNotebook/mapping',
+        string_threshold: 0.8,
+        number_tolerance: 5
+      });
+      setReconciliationResult(result);
+      console.log('Reconciliation result:', result);
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || 'Failed to reconcile invoice');
+      console.error('Reconciliation error:', err);
+    } finally {
+      setIsReconciling(false);
     }
   };
 
@@ -405,11 +433,102 @@ const InvoiceExtractor: React.FC = () => {
         {extractionResult && (
           <div className="action-buttons-section">
             <button
-              className="btn btn-primary"
-              onClick={() => navigate('/review')}
+              className={`btn btn-primary ${isReconciling ? 'reconciling' : ''}`}
+              onClick={handleReconcile}
+              disabled={isReconciling}
             >
-              Proceed to Review →
+              {isReconciling ? (
+                <>
+                  <span className="spinner"></span>
+                  {' '}Running Reconciliation...
+                </>
+              ) : (
+                '🔍 Run Reconciliation (Phase 2)'
+              )}
             </button>
+            
+            {reconciliationResult && (
+              <button
+                className="btn btn-secondary"
+                onClick={() => navigate('/review', { state: { reconciliationData: reconciliationResult } })}
+              >
+                View Discrepancy Report →
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Reconciliation Summary */}
+        {reconciliationResult && (
+          <div className="reconciliation-summary">
+            <h2>📊 Reconciliation Summary</h2>
+            <div className="summary-stats">
+              <div className="stat-card">
+                <label>Mapping Files Checked</label>
+                <span className="stat-value">{reconciliationResult.mapping_files_count}</span>
+              </div>
+              <div className="stat-card">
+                <label>Line Items Matched</label>
+                <span className="stat-value success">{reconciliationResult.summary.fuzzy_matches}</span>
+              </div>
+              <div className="stat-card">
+                <label>Discrepancies Found</label>
+                <span className={`stat-value ${reconciliationResult.summary.discrepancies > 0 ? 'warning' : 'success'}`}>
+                  {reconciliationResult.summary.discrepancies}
+                </span>
+              </div>
+              <div className="stat-card">
+                <label>Unmatched Items</label>
+                <span className={`stat-value ${reconciliationResult.summary.unmatched > 0 ? 'error' : 'success'}`}>
+                  {reconciliationResult.summary.unmatched}
+                </span>
+              </div>
+            </div>
+
+            {reconciliationResult.discrepancy_report.length > 0 && (
+              <div className="discrepancy-preview">
+                <h3>⚠️ Top Discrepancies</h3>
+                <div className="table-container">
+                  <table className="discrepancies-preview-table">
+                    <thead>
+                      <tr>
+                        <th>Campaign</th>
+                        <th>Field</th>
+                        <th>Extracted</th>
+                        <th>Expected</th>
+                        <th>Difference</th>
+                        <th>Severity</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reconciliationResult.discrepancy_report.slice(0, 5).map((disc: any, idx: number) => (
+                        <tr key={idx} className={`severity-${disc.Severity.toLowerCase()}`}>
+                          <td>{disc.Campaign}</td>
+                          <td>{disc.Field}</td>
+                          <td>{disc['Extracted Value']}</td>
+                          <td>{disc['Expected Value']}</td>
+                          <td>{disc['Difference %'] !== 'N/A' ? `${disc['Difference %']}%` : disc.Difference}</td>
+                          <td>
+                            <span className={`severity-badge ${disc.Severity.toLowerCase()}`}>
+                              {disc.Severity === 'CRITICAL' && '🔴'}
+                              {disc.Severity === 'HIGH' && '🟠'}
+                              {disc.Severity === 'MEDIUM' && '🟡'}
+                              {disc.Severity === 'LOW' && '🟢'}
+                              {' '}{disc.Severity}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {reconciliationResult.discrepancy_report.length > 5 && (
+                  <p className="more-discrepancies">
+                    + {reconciliationResult.discrepancy_report.length - 5} more discrepancies
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

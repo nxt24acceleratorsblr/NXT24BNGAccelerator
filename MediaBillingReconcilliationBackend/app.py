@@ -132,6 +132,105 @@ def extract_invoice():
             'traceback': traceback.format_exc()
         }), 500
 
+@app.route('/api/reconcile-invoice', methods=['POST'])
+def reconcile_invoice():
+    """
+    Run complete invoice reconciliation workflow - Phase 2
+    Accepts: extracted_data (JSON) OR filepath (will extract first)
+    Returns: Reconciliation results with discrepancy report
+    """
+    try:
+        # Import reconciliation functions
+        from services.invoice_reconciliation import run_invoice_reconciliation
+        
+        # Support both pre-extracted data and filepath
+        if request.is_json and 'extracted_data' in request.json:
+            # Use pre-extracted data
+            extracted_data = request.json['extracted_data']
+            mapping_folder = request.json.get('mapping_folder', '../MediaBillingNotebook/mapping')
+            string_threshold = request.json.get('string_threshold', 0.8)
+            number_tolerance = request.json.get('number_tolerance', 5.0)
+            
+            # Import reconciliation module functions
+            from services.invoice_reconciliation import (
+                load_mapping_files, normalize_mapping_data, 
+                find_fuzzy_matches, generate_discrepancy_report, 
+                save_discrepancy_report
+            )
+            
+            # Load and normalize mapping data
+            mapping_data_raw = load_mapping_files(mapping_folder)
+            if not mapping_data_raw:
+                return jsonify({
+                    'success': False,
+                    'error': 'No mapping files found'
+                }), 404
+            
+            mapping_data = [normalize_mapping_data(m) for m in mapping_data_raw]
+            
+            # Run fuzzy matching
+            fuzzy_matches = find_fuzzy_matches(
+                extracted_data,
+                mapping_data,
+                string_threshold,
+                number_tolerance
+            )
+            
+            # Generate report
+            discrepancy_df = generate_discrepancy_report(fuzzy_matches)
+            report_path = None
+            if not discrepancy_df.empty:
+                report_path = save_discrepancy_report(discrepancy_df)
+            
+            return jsonify({
+                'success': True,
+                'status': 'success',
+                'extracted_data': extracted_data,
+                'mapping_files_count': len(mapping_data),
+                'fuzzy_matches': fuzzy_matches,
+                'discrepancy_report': discrepancy_df.to_dict('records') if not discrepancy_df.empty else [],
+                'report_path': report_path,
+                'summary': {
+                    'total_line_items': len(extracted_data.get('line_items', [])),
+                    'fuzzy_matches': len(fuzzy_matches['fuzzy_matches']),
+                    'discrepancies': len(fuzzy_matches['potential_discrepancies']),
+                    'unmatched': len(fuzzy_matches['no_match_found'])
+                }
+            })
+        
+        elif request.is_json and 'filepath' in request.json:
+            # Extract and reconcile
+            filepath = request.json['filepath']
+            if not Path(filepath).exists():
+                return jsonify({'error': f'File not found: {filepath}'}), 404
+            
+            mapping_folder = request.json.get('mapping_folder', '../MediaBillingNotebook/mapping')
+            string_threshold = request.json.get('string_threshold', 0.8)
+            number_tolerance = request.json.get('number_tolerance', 5.0)
+            
+            results = run_invoice_reconciliation(
+                filepath,
+                mapping_folder,
+                string_threshold,
+                number_tolerance,
+                save_report=True
+            )
+            
+            return jsonify({
+                'success': True,
+                **results
+            })
+        
+        else:
+            return jsonify({'error': 'Either extracted_data or filepath required'}), 400
+    
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
 if __name__ == '__main__':
     print("🚀 Starting iPhone 17 Campaign Generator API...")
     print(f"📁 Upload folder: {UPLOAD_FOLDER}")
