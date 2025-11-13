@@ -155,7 +155,7 @@ def reconcile_invoice():
             from services.invoice_reconciliation import (
                 load_mapping_files, normalize_mapping_data, 
                 find_fuzzy_matches, generate_discrepancy_report, 
-                save_discrepancy_report
+                save_discrepancy_report, calculate_trust_score
             )
             
             # Load and normalize mapping data
@@ -176,6 +176,9 @@ def reconcile_invoice():
                 number_tolerance
             )
             
+            # Calculate trust score
+            trust_score = calculate_trust_score(fuzzy_matches)
+            
             # Generate report
             discrepancy_df = generate_discrepancy_report(fuzzy_matches)
             report_path = None
@@ -190,6 +193,7 @@ def reconcile_invoice():
                 'fuzzy_matches': fuzzy_matches,
                 'discrepancy_report': discrepancy_df.to_dict('records') if not discrepancy_df.empty else [],
                 'report_path': report_path,
+                'trust_score': trust_score,
                 'summary': {
                     'total_line_items': len(extracted_data.get('line_items', [])),
                     'fuzzy_matches': len(fuzzy_matches['fuzzy_matches']),

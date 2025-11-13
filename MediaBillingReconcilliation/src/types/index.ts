@@ -1,4 +1,5 @@
 
+
 export interface AgentTask {
   id: number;
   name: string;
@@ -62,3 +63,63 @@ export interface InvoiceExtractionResult {
   validation: InvoiceValidation;
   filepath: string;
 }
+
+// Reconciliation Types
+export interface DiscrepancyDetail {
+  field: string;
+  extracted_value: any;
+  mapping_value: any;
+  difference?: number | string;
+  difference_percent?: number;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+}
+
+export interface DiscrepancyItem {
+  id?: number;
+  mapping_file: string;
+  extracted_line: number;
+  mapping_line: number;
+  campaign: string;
+  overall_score: number;
+  discrepancies: DiscrepancyDetail[];
+  status?: 'pending' | 'approved' | 'rejected';
+}
+
+export interface TrustScore {
+  score: number;
+  level: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'CRITICAL';
+  color: string;
+  severity_breakdown: {
+    CRITICAL: number;
+    HIGH: number;
+    MEDIUM: number;
+    LOW: number;
+  };
+  total_discrepancies: number;
+  successful_matches: number;
+  total_items: number;
+  match_rate: number;
+}
+
+export interface ReconciliationSummary {
+  total_line_items: number;
+  fuzzy_matches: number;
+  discrepancies: number;
+  unmatched: number;
+}
+
+export interface ReconciliationResult {
+  status: string;
+  extracted_data: InvoiceData;
+  mapping_files_count: number;
+  fuzzy_matches: {
+    fuzzy_matches: any[];
+    potential_discrepancies: DiscrepancyItem[];
+    no_match_found: any[];
+  };
+  discrepancy_report: any[];
+  report_path: string | null;
+  trust_score: TrustScore;
+  summary: ReconciliationSummary;
+}
+

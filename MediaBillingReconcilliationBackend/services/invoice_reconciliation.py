@@ -330,6 +330,83 @@ def find_fuzzy_matches(extracted_data: dict, mapping_data: list,
 # REPORTING FUNCTIONS
 # ============================================
 
+def calculate_trust_score(fuzzy_matches: dict) -> dict:
+    """
+    Calculate trust score based on severity distribution using a weighted algorithm.
+    
+    Trust Score Formula:
+    - CRITICAL discrepancies: -15 points each
+    - HIGH discrepancies: -8 points each
+    - MEDIUM discrepancies: -4 points each
+    - LOW discrepancies: -1 point each
+    - Successful matches: +2 points each
+    
+    Base score starts at 100, minimum is 0, maximum is 100
+    """
+    severity_weights = {
+        'CRITICAL': -15,
+        'HIGH': -8,
+        'MEDIUM': -4,
+        'LOW': -1
+    }
+    
+    base_score = 100
+    total_items = len(fuzzy_matches.get('fuzzy_matches', []))
+    discrepancies = fuzzy_matches.get('potential_discrepancies', [])
+    
+    # Count severities
+    severity_counts = {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
+    
+    for disc in discrepancies:
+        for field_disc in disc.get('discrepancies', []):
+            severity = field_disc.get('severity', 'UNKNOWN')
+            if severity in severity_counts:
+                severity_counts[severity] += 1
+    
+    # Calculate deductions
+    total_deduction = sum(
+        severity_counts[severity] * severity_weights[severity]
+        for severity in severity_counts
+    )
+    
+    # Calculate successful matches bonus
+    successful_matches = len([m for m in fuzzy_matches.get('fuzzy_matches', []) 
+                              if m.get('overall_score', 0) >= 0.9])
+    match_bonus = successful_matches * 2
+    
+    # Calculate final score
+    trust_score = base_score + total_deduction + match_bonus
+    trust_score = max(0, min(100, trust_score))  # Clamp between 0-100
+    
+    # Determine trust level
+    if trust_score >= 90:
+        trust_level = 'EXCELLENT'
+        trust_color = 'green'
+    elif trust_score >= 75:
+        trust_level = 'GOOD'
+        trust_color = 'blue'
+    elif trust_score >= 60:
+        trust_level = 'FAIR'
+        trust_color = 'yellow'
+    elif trust_score >= 40:
+        trust_level = 'POOR'
+        trust_color = 'orange'
+    else:
+        trust_level = 'CRITICAL'
+        trust_color = 'red'
+    
+    return {
+        'score': round(trust_score, 2),
+        'level': trust_level,
+        'color': trust_color,
+        'severity_breakdown': severity_counts,
+        'total_discrepancies': sum(severity_counts.values()),
+        'successful_matches': successful_matches,
+        'total_items': total_items,
+        'match_rate': round((successful_matches / total_items * 100), 2) if total_items > 0 else 0
+    }
+
+
 def generate_discrepancy_report(fuzzy_matches: dict) -> pd.DataFrame:
     """Generate a detailed discrepancy report as a DataFrame."""
     report_data = []
@@ -409,7 +486,8 @@ def run_invoice_reconciliation(invoice_file_path: str,
             "extracted_data": extracted_data,
             "mapping_data": [],
             "warning": "No mapping files available",
-            "discrepancy_report": []
+            "discrepancy_report": [],
+            "trust_score": calculate_trust_score({'fuzzy_matches': [], 'potential_discrepancies': []})
         }
     
     mapping_data = [normalize_mapping_data(m) for m in mapping_data_raw]
@@ -421,6 +499,9 @@ def run_invoice_reconciliation(invoice_file_path: str,
         string_threshold,
         number_tolerance
     )
+    
+    # Calculate trust score
+    trust_score = calculate_trust_score(fuzzy_matches)
     
     # Generate report
     discrepancy_df = generate_discrepancy_report(fuzzy_matches)
@@ -436,6 +517,7 @@ def run_invoice_reconciliation(invoice_file_path: str,
         "fuzzy_matches": fuzzy_matches,
         "discrepancy_report": discrepancy_df.to_dict('records') if not discrepancy_df.empty else [],
         "report_path": report_path,
+        "trust_score": trust_score,
         "summary": {
             "total_line_items": len(extracted_data.get('line_items', [])),
             "fuzzy_matches": len(fuzzy_matches['fuzzy_matches']),

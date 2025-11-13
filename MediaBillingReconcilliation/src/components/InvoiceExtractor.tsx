@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { extractInvoice, reconcileInvoice } from '../services/campaignAPI';
-import { InvoiceExtractionResult } from '../types';
+import { InvoiceExtractionResult, ReconciliationResult } from '../types';
 import './InvoiceExtractor.css';
 
 const InvoiceExtractor: React.FC = () => {
@@ -90,6 +90,9 @@ const InvoiceExtractor: React.FC = () => {
       });
       setReconciliationResult(result);
       console.log('Reconciliation result:', result);
+      
+      // Navigate to review screen with reconciliation data
+      navigate('/review', { state: { reconciliationData: result } });
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Failed to reconcile invoice');
       console.error('Reconciliation error:', err);
@@ -443,18 +446,9 @@ const InvoiceExtractor: React.FC = () => {
                   {' '}Running Reconciliation...
                 </>
               ) : (
-                '🔍 Run Reconciliation (Phase 2)'
+                '🔍 Run Reconciliation & Review Discrepancies'
               )}
             </button>
-            
-            {reconciliationResult && (
-              <button
-                className="btn btn-secondary"
-                onClick={() => navigate('/review', { state: { reconciliationData: reconciliationResult } })}
-              >
-                View Discrepancy Report →
-              </button>
-            )}
           </div>
         )}
 

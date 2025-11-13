@@ -104,6 +104,130 @@
   color: var(--error-color);
 }
 
+/* Summary Cards */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.summary-card {
+  background: var(--card-background);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  border-left: 4px solid var(--primary-color);
+}
+
+.summary-card.success {
+  border-left-color: var(--success-color);
+}
+
+.summary-card.warning {
+  border-left-color: var(--warning-color);
+}
+
+.summary-card.info {
+  border-left-color: var(--info-color);
+}
+
+.summary-card h3 {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-card .card-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* No Discrepancies */
+.no-discrepancies {
+  text-align: center;
+  padding: 3rem;
+  background: var(--success-light);
+  border-radius: 12px;
+  margin: 1rem 0;
+}
+
+.no-discrepancies p {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--success-dark);
+  margin: 0;
+}
+
+/* Warning Message */
+.warning-message {
+  background: var(--warning-light);
+  color: var(--warning-dark);
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid var(--warning-color);
+  margin-top: 1rem;
+  font-weight: 500;
+}
+
+/* Severity Badge */
+.severity-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.severity-badge.critical {
+  background: #fee;
+  color: #c00;
+}
+
+.severity-badge.high {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.severity-badge.medium {
+  background: #fffde7;
+  color: #f57f17;
+}
+
+.severity-badge.low {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.severity-badge.unknown {
+  background: #f5f5f5;
+  color: #757575;
+}
+
+/* Table Cell Styles */
+.campaign-cell {
+  font-weight: 600;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-cell {
+  font-weight: 500;
+  color: var(--primary-color);
+}
+
+.severity-cell {
+  text-align: center;
+}
+
 /* Discrepancies Section */
 .discrepancies-section {
   background: var(--card-background);
