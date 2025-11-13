@@ -84,7 +84,6 @@ const InvoiceExtractor: React.FC = () => {
             <input
               type="file"
               className="file-input"
-              accept=".pdf,.csv,.xlsx,.xls"
               onChange={handleFileUpload}
               disabled={isExtracting}
               id="invoice-file"
@@ -103,7 +102,7 @@ const InvoiceExtractor: React.FC = () => {
                 <div className="upload-prompt">
                   <span className="upload-icon">📤</span>
                   <p>Click to upload invoice file</p>
-                  <p className="upload-hint">PDF, Excel (.xlsx, .xls), or CSV • Max 10MB</p>
+                  <p className="upload-hint">All file types supported • Max 10MB</p>
                 </div>
               )}
             </label>
