@@ -19,7 +19,8 @@ const Header = () => {
             aria-label="Toggle theme"
             title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
           >
-            {theme === 'light' ? '🌙' : '☀️'}
+            <span className="theme-icon theme-icon-light">☀️</span>
+            <span className="theme-icon theme-icon-dark">🌙</span>
           </button>
         </div>
       </div>

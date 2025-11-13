@@ -6,23 +6,52 @@ import './InvoiceExtractor.css';
 
 const InvoiceExtractor: React.FC = () => {
   const navigate = useNavigate();
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionResult, setExtractionResult] = useState<InvoiceExtractionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setUploadedFile(file);
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const newFiles = Array.from(files);
+      setUploadedFiles(prev => [...prev, ...newFiles]);
       setExtractionResult(null);
       setError(null);
     }
   };
 
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const newFiles = Array.from(e.dataTransfer.files);
+      setUploadedFiles(prev => [...prev, ...newFiles]);
+      setExtractionResult(null);
+      setError(null);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleExtract = async () => {
-    if (!uploadedFile) {
-      setError('Please select a file first');
+    if (uploadedFiles.length === 0) {
+      setError('Please select at least one file');
       return;
     }
 
@@ -30,7 +59,8 @@ const InvoiceExtractor: React.FC = () => {
     setError(null);
 
     try {
-      const result = await extractInvoice(uploadedFile, 50);
+      // For now, extract the first file. In future, handle multiple files
+      const result = await extractInvoice(uploadedFiles[0], 50);
       setExtractionResult(result);
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Failed to extract invoice data');
@@ -58,6 +88,12 @@ const InvoiceExtractor: React.FC = () => {
     return date;
   };
 
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
   const getFileTypeIcon = (filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase();
     switch (ext) {
@@ -65,6 +101,13 @@ const InvoiceExtractor: React.FC = () => {
       case 'xlsx':
       case 'xls': return '📊';
       case 'csv': return '📑';
+      case 'eml': return '📧';
+      case 'png':
+      case 'jpg':
+      case 'jpeg': return '🖼️';
+      case 'html':
+      case 'htm': return '🌐';
+      case 'txt': return '📝';
       default: return '📁';
     }
   };
@@ -72,57 +115,76 @@ const InvoiceExtractor: React.FC = () => {
   return (
     <div className="invoice-extractor">
       <div className="extractor-header">
-        <h1>📋 Invoice Data Extractor</h1>
-        <p>Upload media billing invoices to extract structured data</p>
+        <h1>Upload Your Invoice for Reconciliation</h1>
       </div>
 
       <div className="extractor-content">
+        {/* Supported Formats */}
+        <p className="supported-formats">Supported Formats: PDF, XLS, CSV, Email (.eml), Images (PNG/JPG), HTML, TXT</p>
+
         {/* File Upload Section */}
         <div className="upload-section">
-          <label className="upload-label">Upload Invoice File</label>
-          <div className="file-upload-area">
+          <div 
+            className={`file-upload-area ${dragActive ? 'drag-active' : ''}`}
+            onDragEnter={handleDrag}
+            onDragOver={handleDrag}
+            onDragLeave={handleDrag}
+            onDrop={handleDrop}
+          >
             <input
               type="file"
               className="file-input"
               onChange={handleFileUpload}
               disabled={isExtracting}
               id="invoice-file"
+              multiple
+              accept=".pdf,.xls,.xlsx,.csv,.eml,.png,.jpg,.jpeg,.html,.htm,.txt"
             />
             <label htmlFor="invoice-file" className="file-upload-label">
-              {uploadedFile ? (
-                <div className="file-selected">
-                  <span className="file-icon">{getFileTypeIcon(uploadedFile.name)}</span>
-                  <div className="file-info">
-                    <p className="file-name">{uploadedFile.name}</p>
-                    <p className="file-size">{(uploadedFile.size / 1024).toFixed(2)} KB</p>
-                  </div>
-                  <span className="check-icon">✓</span>
-                </div>
-              ) : (
-                <div className="upload-prompt">
-                  <span className="upload-icon">📤</span>
-                  <p>Click to upload invoice file</p>
-                  <p className="upload-hint">All file types supported • Max 10MB</p>
-                </div>
-              )}
+              <div className="upload-prompt">
+                <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <p className="upload-text">Drop files here <span className="or-text">OR</span> Browse</p>
+                <p className="upload-hint">You can upload multiple invoices</p>
+              </div>
             </label>
           </div>
+
+          {/* File Chips */}
+          {uploadedFiles.length > 0 && (
+            <div className="file-chips-container">
+              {uploadedFiles.map((file, index) => (
+                <div key={`${file.name}-${index}`} className="file-chip">
+                  <span className="file-chip-icon">{getFileTypeIcon(file.name)}</span>
+                  <div className="file-chip-info">
+                    <span className="file-chip-name">{file.name}</span>
+                    <span className="file-chip-size">{formatFileSize(file.size)}</span>
+                  </div>
+                  <button 
+                    className="file-chip-remove"
+                    onClick={() => removeFile(index)}
+                    aria-label="Remove file"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           <button
             className={`extract-button ${isExtracting ? 'extracting' : ''}`}
             onClick={handleExtract}
-            disabled={!uploadedFile || isExtracting}
+            disabled={uploadedFiles.length === 0 || isExtracting}
           >
             {isExtracting ? (
               <>
                 <span className="spinner"></span>
-                Extracting Invoice Data...
+                {' '}Extracting Invoice Data...
               </>
             ) : (
-              <>
-                <span className="button-icon">🔍</span>
-                Extract Invoice Data
-              </>
+              'Extract Report'
             )}
           </button>
         </div>
