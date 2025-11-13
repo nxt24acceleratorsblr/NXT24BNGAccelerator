@@ -1,0 +1,168 @@
+/* Reset and base setup */
+* {
+  box-sizing: border-box;
+  font-family: "Inter", sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background-color: #f9fafb;
+}
+
+/* Full page layout */
+.page-container {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+}
+
+/* Left panel */
+.left-panel {
+  flex: 1.2; /* slightly wider than right panel */
+  background-color: #f3f4f6;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  min-width: 500px; /* ensures enough space for one-line title */
+}
+
+.left-content {
+  text-align: left;
+  max-width: 600px; /* give more width for the title */
+  white-space: nowrap; /* prevents title from wrapping */
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+}
+
+.subtitle {
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+/* Right panel */
+.right-panel {
+  flex: 1;
+  background-color: #ffffff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background-color: #fff;
+  padding: 2.5rem 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.login-header {
+  margin-bottom: 1.5rem;
+}
+
+.shield-icon {
+  font-size: 2rem;
+  color: #6366f1;
+  margin-bottom: 0.5rem;
+}
+
+h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Form styling */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.login-form label {
+  color: #374151;
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+  font-weight: 500;
+}
+
+.login-form input {
+  padding: 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.login-form input:focus {
+  border-color: #6366f1;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.forgot-password {
+  text-align: right;
+  margin-bottom: 1rem;
+}
+
+.forgot-password a {
+  font-size: 0.85rem;
+  color: #6366f1;
+  text-decoration: none;
+}
+
+.forgot-password a:hover {
+  text-decoration: underline;
+}
+
+/* Buttons */
+.btn {
+  width: 100%;
+  padding: 0.7rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-bottom: 0.7rem;
+  border: none;
+}
+
+.btn-primary {
+  background-color: #6366f1;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background-color: #4f46e5;
+}
+
+.btn-secondary {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 1px solid #d1d5db;
+  color: #111827;
+}
+
+.btn-outline:hover {
+  background-color: #f9fafb;
+}
+
+/* Footer */
+.powered-text {
+  margin-top: 1.5rem;
+  font-size
