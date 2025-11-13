@@ -126,7 +126,7 @@ const InvoiceExtractor: React.FC = () => {
   };
 
   const formatCurrency = (amount: number | null, currency: string | null = 'USD') => {
-    if (amount === null) return 'N/A';
+    if (amount === null) return '';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency || 'USD'
@@ -134,12 +134,12 @@ const InvoiceExtractor: React.FC = () => {
   };
 
   const formatNumber = (num: number | null) => {
-    if (num === null) return 'N/A';
+    if (num === null) return '';
     return num.toLocaleString();
   };
 
   const formatDate = (date: string | null) => {
-    if (!date) return 'N/A';
+    if (!date) return '';
     return date;
   };
 
@@ -147,6 +147,10 @@ const InvoiceExtractor: React.FC = () => {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const hasValue = (value: any): boolean => {
+    return value !== null && value !== undefined && value !== '' && value !== 'N/A';
   };
 
   const getFileTypeIcon = (filename: string) => {
@@ -317,87 +321,122 @@ const InvoiceExtractor: React.FC = () => {
           <div className="invoice-header-section">
             <h2>📄 Invoice Header</h2>
             <div className="header-grid">
-              <div className="header-item">
-                <label>Invoice Number:</label>
-                <span>{extractionResult.invoice_data.invoice_header.invoice_number || 'N/A'}</span>
-              </div>
-              <div className="header-item">
-                <label>Vendor:</label>
-                <span>{extractionResult.invoice_data.invoice_header.vendor_name || 'N/A'}</span>
-              </div>
-              <div className="header-item">
-                <label>Campaign:</label>
-                <span>{extractionResult.invoice_data.invoice_header.campaign_name || 'N/A'}</span>
-              </div>
-              <div className="header-item">
-                <label>Invoice Date:</label>
-                <span>{formatDate(extractionResult.invoice_data.invoice_header.invoice_date)}</span>
-              </div>
-              <div className="header-item">
-                <label>Billing Period:</label>
-                <span>
-                  {formatDate(extractionResult.invoice_data.invoice_header.billing_start_date)} - {formatDate(extractionResult.invoice_data.invoice_header.billing_end_date)}
-                </span>
-              </div>
-              <div className="header-item">
-                <label>Currency:</label>
-                <span>{extractionResult.invoice_data.invoice_header.currency || 'USD'}</span>
-              </div>
+              {hasValue(extractionResult.invoice_data.invoice_header.invoice_number) && (
+                <div className="header-item">
+                  <label>Invoice Number:</label>
+                  <span>{extractionResult.invoice_data.invoice_header.invoice_number}</span>
+                </div>
+              )}
+              {hasValue(extractionResult.invoice_data.invoice_header.vendor_name) && (
+                <div className="header-item">
+                  <label>Vendor:</label>
+                  <span>{extractionResult.invoice_data.invoice_header.vendor_name}</span>
+                </div>
+              )}
+              {hasValue(extractionResult.invoice_data.invoice_header.campaign_name) && (
+                <div className="header-item">
+                  <label>Campaign:</label>
+                  <span>{extractionResult.invoice_data.invoice_header.campaign_name}</span>
+                </div>
+              )}
+              {hasValue(extractionResult.invoice_data.invoice_header.invoice_date) && (
+                <div className="header-item">
+                  <label>Invoice Date:</label>
+                  <span>{formatDate(extractionResult.invoice_data.invoice_header.invoice_date)}</span>
+                </div>
+              )}
+              {(hasValue(extractionResult.invoice_data.invoice_header.billing_start_date) || hasValue(extractionResult.invoice_data.invoice_header.billing_end_date)) && (
+                <div className="header-item">
+                  <label>Billing Period:</label>
+                  <span>
+                    {formatDate(extractionResult.invoice_data.invoice_header.billing_start_date)} - {formatDate(extractionResult.invoice_data.invoice_header.billing_end_date)}
+                  </span>
+                </div>
+              )}
+              {hasValue(extractionResult.invoice_data.invoice_header.currency) && (
+                <div className="header-item">
+                  <label>Currency:</label>
+                  <span>{extractionResult.invoice_data.invoice_header.currency}</span>
+                </div>
+              )}
             </div>
 
-            <div className="metrics-section">
-              <h3>📊 Delivery Metrics</h3>
-              <div className="metrics-grid">
-                <div className="metric-card">
-                  <label>Impressions</label>
-                  <span className="metric-value">
-                    {formatNumber(extractionResult.invoice_data.invoice_header.total_impressions)}
-                  </span>
-                </div>
-                <div className="metric-card">
-                  <label>Views</label>
-                  <span className="metric-value">
-                    {formatNumber(extractionResult.invoice_data.invoice_header.total_views)}
-                  </span>
-                </div>
-                <div className="metric-card">
-                  <label>Clicks</label>
-                  <span className="metric-value">
-                    {formatNumber(extractionResult.invoice_data.invoice_header.total_clicks)}
-                  </span>
+            {(hasValue(extractionResult.invoice_data.invoice_header.total_impressions) || 
+              hasValue(extractionResult.invoice_data.invoice_header.total_views) || 
+              hasValue(extractionResult.invoice_data.invoice_header.total_clicks)) && (
+              <div className="metrics-section">
+                <h3>📊 Delivery Metrics</h3>
+                <div className="metrics-grid">
+                  {hasValue(extractionResult.invoice_data.invoice_header.total_impressions) && (
+                    <div className="metric-card">
+                      <label>Impressions</label>
+                      <span className="metric-value">
+                        {formatNumber(extractionResult.invoice_data.invoice_header.total_impressions)}
+                      </span>
+                    </div>
+                  )}
+                  {hasValue(extractionResult.invoice_data.invoice_header.total_views) && (
+                    <div className="metric-card">
+                      <label>Views</label>
+                      <span className="metric-value">
+                        {formatNumber(extractionResult.invoice_data.invoice_header.total_views)}
+                      </span>
+                    </div>
+                  )}
+                  {hasValue(extractionResult.invoice_data.invoice_header.total_clicks) && (
+                    <div className="metric-card">
+                      <label>Clicks</label>
+                      <span className="metric-value">
+                        {formatNumber(extractionResult.invoice_data.invoice_header.total_clicks)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
 
-            <div className="financial-section">
-              <h3>💰 Financial Summary</h3>
-              <div className="financial-grid">
-                <div className="financial-item highlight">
-                  <label>Gross Revenue:</label>
-                  <span className="amount">
-                    {formatCurrency(extractionResult.invoice_data.invoice_header.gross_revenue, extractionResult.invoice_data.invoice_header.currency)}
-                  </span>
-                </div>
-                <div className="financial-item">
-                  <label>Discount ({extractionResult.invoice_data.invoice_header.discount_percent || 0}%):</label>
-                  <span className="amount discount">
-                    -{formatCurrency(extractionResult.invoice_data.invoice_header.total_discount_amount, extractionResult.invoice_data.invoice_header.currency)}
-                  </span>
-                </div>
-                <div className="financial-item highlight">
-                  <label>Net Revenue:</label>
-                  <span className="amount">
-                    {formatCurrency(extractionResult.invoice_data.invoice_header.net_revenue, extractionResult.invoice_data.invoice_header.currency)}
-                  </span>
-                </div>
-                <div className="financial-item profit">
-                  <label>Profit:</label>
-                  <span className="amount">
-                    {formatCurrency(extractionResult.invoice_data.invoice_header.profit, extractionResult.invoice_data.invoice_header.currency)}
-                  </span>
+            {(hasValue(extractionResult.invoice_data.invoice_header.gross_revenue) || 
+              hasValue(extractionResult.invoice_data.invoice_header.net_revenue) || 
+              hasValue(extractionResult.invoice_data.invoice_header.profit) || 
+              hasValue(extractionResult.invoice_data.invoice_header.total_discount_amount)) && (
+              <div className="financial-section">
+                <h3>💰 Financial Summary</h3>
+                <div className="financial-grid">
+                  {hasValue(extractionResult.invoice_data.invoice_header.gross_revenue) && (
+                    <div className="financial-item highlight">
+                      <label>Gross Revenue:</label>
+                      <span className="amount">
+                        {formatCurrency(extractionResult.invoice_data.invoice_header.gross_revenue, extractionResult.invoice_data.invoice_header.currency)}
+                      </span>
+                    </div>
+                  )}
+                  {hasValue(extractionResult.invoice_data.invoice_header.total_discount_amount) && (
+                    <div className="financial-item">
+                      <label>Discount ({extractionResult.invoice_data.invoice_header.discount_percent || 0}%):</label>
+                      <span className="amount discount">
+                        -{formatCurrency(extractionResult.invoice_data.invoice_header.total_discount_amount, extractionResult.invoice_data.invoice_header.currency)}
+                      </span>
+                    </div>
+                  )}
+                  {hasValue(extractionResult.invoice_data.invoice_header.net_revenue) && (
+                    <div className="financial-item highlight">
+                      <label>Net Revenue:</label>
+                      <span className="amount">
+                        {formatCurrency(extractionResult.invoice_data.invoice_header.net_revenue, extractionResult.invoice_data.invoice_header.currency)}
+                      </span>
+                    </div>
+                  )}
+                  {hasValue(extractionResult.invoice_data.invoice_header.profit) && (
+                    <div className="financial-item profit">
+                      <label>Profit:</label>
+                      <span className="amount">
+                        {formatCurrency(extractionResult.invoice_data.invoice_header.profit, extractionResult.invoice_data.invoice_header.currency)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -426,10 +465,12 @@ const InvoiceExtractor: React.FC = () => {
                   {extractionResult.invoice_data.line_items.map((item) => (
                     <tr key={item.line_id}>
                       <td>{item.line_id}</td>
-                      <td>{item.campaign_name || '-'}</td>
-                      <td>{item.placement || '-'}</td>
+                      <td>{item.campaign_name || ''}</td>
+                      <td>{item.placement || ''}</td>
                       <td className="date-cell">
-                        {formatDate(item.start_date)} - {formatDate(item.end_date)}
+                        {hasValue(item.start_date) && hasValue(item.end_date) 
+                          ? `${formatDate(item.start_date)} - ${formatDate(item.end_date)}`
+                          : formatDate(item.start_date) || formatDate(item.end_date)}
                       </td>
                       <td className="number-cell">{formatNumber(item.billed_impressions)}</td>
                       <td className="number-cell">{formatNumber(item.views)}</td>
@@ -438,7 +479,7 @@ const InvoiceExtractor: React.FC = () => {
                         {formatCurrency(item.gross_revenue, extractionResult.invoice_data.invoice_header.currency)}
                       </td>
                       <td className="currency-cell discount">
-                        {item.discount_amount ? `-${formatCurrency(item.discount_amount, extractionResult.invoice_data.invoice_header.currency)}` : '-'}
+                        {item.discount_amount ? `-${formatCurrency(item.discount_amount, extractionResult.invoice_data.invoice_header.currency)}` : ''}
                       </td>
                       <td className="currency-cell">
                         {formatCurrency(item.net_revenue, extractionResult.invoice_data.invoice_header.currency)}
