@@ -192,11 +192,11 @@ def fuzzy_number_match(num1: float, num2: float, tolerance_percent: float = 5.0)
 
 def get_discrepancy_severity(percent_diff: float) -> str:
     """Determine severity based on percentage difference."""
-    if percent_diff < 1:
+    if percent_diff < 15:
         return 'LOW'
-    elif percent_diff < 5:
+    elif percent_diff < 35:
         return 'MEDIUM'
-    elif percent_diff < 10:
+    elif percent_diff < 50:
         return 'HIGH'
     else:
         return 'CRITICAL'
