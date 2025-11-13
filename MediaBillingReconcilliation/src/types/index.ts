@@ -82,7 +82,6 @@ export interface DiscrepancyItem {
   campaign: string;
   overall_score: number;
   discrepancies: DiscrepancyDetail[];
-  status?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface TrustScore {
@@ -99,6 +98,20 @@ export interface TrustScore {
   successful_matches: number;
   total_items: number;
   match_rate: number;
+}
+
+export interface VendorScore {
+  vendor_name: string;
+  score: number;
+  grade: string;
+  total_discrepancies: number;
+  severity_breakdown: {
+    CRITICAL: number;
+    HIGH: number;
+    MEDIUM: number;
+    LOW: number;
+  };
+  reports_analyzed: number;
 }
 
 export interface ReconciliationSummary {
@@ -120,6 +133,7 @@ export interface ReconciliationResult {
   discrepancy_report: any[];
   report_path: string | null;
   trust_score: TrustScore;
+  vendor_score: VendorScore | null;
   summary: ReconciliationSummary;
 }
 

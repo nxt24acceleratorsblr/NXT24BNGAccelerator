@@ -3,9 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ReconciliationResult, DiscrepancyItem } from '../types';
 import './DiscrepancyReview.css';
 
-interface DiscrepancyWithStatus extends DiscrepancyItem {
+interface DiscrepancyWithId extends DiscrepancyItem {
   id: number;
-  status: 'pending' | 'approved' | 'rejected';
 }
 
 const DiscrepancyReview: React.FC = () => {
@@ -13,8 +12,7 @@ const DiscrepancyReview: React.FC = () => {
   const location = useLocation();
   const reconciliationData = location.state?.reconciliationData as ReconciliationResult;
 
-  const [discrepancies, setDiscrepancies] = useState<DiscrepancyWithStatus[]>([]);
-  const [matchingProgress, setMatchingProgress] = useState(0);
+  const [discrepancies, setDiscrepancies] = useState<DiscrepancyWithId[]>([]);
 
   useEffect(() => {
     if (!reconciliationData) {
@@ -22,8 +20,8 @@ const DiscrepancyReview: React.FC = () => {
       return;
     }
 
-    // Transform potential_discrepancies into discrepancies with status
-    const transformedDiscrepancies: DiscrepancyWithStatus[] = [];
+    // Transform potential_discrepancies into discrepancies with IDs
+    const transformedDiscrepancies: DiscrepancyWithId[] = [];
     let idCounter = 1;
 
     reconciliationData.fuzzy_matches.potential_discrepancies.forEach((disc) => {
@@ -35,8 +33,7 @@ const DiscrepancyReview: React.FC = () => {
           mapping_line: disc.mapping_line,
           campaign: disc.campaign,
           overall_score: disc.overall_score,
-          discrepancies: [fieldDisc],
-          status: 'pending'
+          discrepancies: [fieldDisc]
         });
       });
     });
@@ -44,34 +41,13 @@ const DiscrepancyReview: React.FC = () => {
     setDiscrepancies(transformedDiscrepancies);
   }, [reconciliationData, navigate]);
 
-  const handleStatusChange = (id: number, newStatus: 'approved' | 'rejected') => {
-    setDiscrepancies(prev =>
-      prev.map(disc =>
-        disc.id === id ? { ...disc, status: newStatus } : disc
-      )
-    );
-
-    // Update progress
-    const updatedDiscrepancies = discrepancies.map(disc =>
-      disc.id === id ? { ...disc, status: newStatus } : disc
-    );
-    const resolved = updatedDiscrepancies.filter(d => d.status !== 'pending').length;
-    const total = updatedDiscrepancies.length;
-    setMatchingProgress(Math.round((resolved / total) * 100));
-  };
-
   const handleGenerateReport = () => {
     navigate('/report', { 
       state: { 
-        reconciliationData,
-        reviewedDiscrepancies: discrepancies
+        reconciliationData
       } 
     });
   };
-
-  const pendingCount = discrepancies.filter(d => d.status === 'pending').length;
-  const approvedCount = discrepancies.filter(d => d.status === 'approved').length;
-  const rejectedCount = discrepancies.filter(d => d.status === 'rejected').length;
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
@@ -99,35 +75,7 @@ const DiscrepancyReview: React.FC = () => {
     <div className="discrepancy-review">
       <div className="review-header">
         <h1>🔍 Discrepancy Review</h1>
-        <p>Review and approve/reject discrepancies found during invoice matching</p>
-      </div>
-
-      {/* Progress Section */}
-      <div className="progress-section">
-        <div className="progress-header">
-          <h2>Matching Progress</h2>
-          <span className="progress-percentage">{matchingProgress}%</span>
-        </div>
-        <div className="progress-bar-container">
-          <div
-            className="progress-bar-fill"
-            style={{ width: `${matchingProgress}%` }}
-          ></div>
-        </div>
-        <div className="progress-stats">
-          <div className="stat-item pending">
-            <span className="stat-label">Pending</span>
-            <span className="stat-value">{pendingCount}</span>
-          </div>
-          <div className="stat-item approved">
-            <span className="stat-label">Approved</span>
-            <span className="stat-value">{approvedCount}</span>
-          </div>
-          <div className="stat-item rejected">
-            <span className="stat-label">Rejected</span>
-            <span className="stat-value">{rejectedCount}</span>
-          </div>
-        </div>
+        <p>Review discrepancies found during invoice matching</p>
       </div>
 
       {/* Summary Cards */}
@@ -169,15 +117,13 @@ const DiscrepancyReview: React.FC = () => {
                   <th>Mapping Value</th>
                   <th>Difference</th>
                   <th>Severity</th>
-                  <th>Status</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {discrepancies.map((disc) => {
                   const fieldDisc = disc.discrepancies[0];
                   return (
-                    <tr key={disc.id} className={`status-${disc.status}`}>
+                    <tr key={disc.id}>
                       <td className="campaign-cell">{disc.campaign || 'N/A'}</td>
                       <td>{disc.extracted_line}</td>
                       <td className="field-cell">{fieldDisc.field}</td>
@@ -192,48 +138,6 @@ const DiscrepancyReview: React.FC = () => {
                         <span className={`severity-badge ${fieldDisc.severity.toLowerCase()}`}>
                           {getSeverityIcon(fieldDisc.severity)} {fieldDisc.severity}
                         </span>
-                      </td>
-                      <td>
-                        <span className={`status-badge status-${disc.status}`}>
-                          {disc.status === 'pending' && '⏳ Pending'}
-                          {disc.status === 'approved' && '✓ Approved'}
-                          {disc.status === 'rejected' && '✗ Rejected'}
-                        </span>
-                      </td>
-                      <td>
-                        {disc.status === 'pending' && (
-                          <div className="action-buttons">
-                            <button
-                              className="action-btn approve-btn"
-                              onClick={() => handleStatusChange(disc.id, 'approved')}
-                              title="Approve"
-                            >
-                              ✓
-                            </button>
-                            <button
-                              className="action-btn reject-btn"
-                              onClick={() => handleStatusChange(disc.id, 'rejected')}
-                              title="Reject"
-                            >
-                              ✗
-                            </button>
-                          </div>
-                        )}
-                        {disc.status !== 'pending' && (
-                          <button
-                            className="action-btn reset-btn"
-                            onClick={() => {
-                              setDiscrepancies(prev =>
-                                prev.map(d =>
-                                  d.id === disc.id ? { ...d, status: 'pending' } : d
-                                )
-                              );
-                            }}
-                            title="Reset"
-                          >
-                            ↺
-                          </button>
-                        )}
                       </td>
                     </tr>
                   );
@@ -255,17 +159,10 @@ const DiscrepancyReview: React.FC = () => {
         <button
           className="btn btn-primary"
           onClick={handleGenerateReport}
-          disabled={pendingCount > 0}
         >
           Generate Final Report →
         </button>
       </div>
-
-      {pendingCount > 0 && (
-        <div className="warning-message">
-          ⚠️ Please review all pending discrepancies before generating the final report
-        </div>
-      )}
     </div>
   );
 };

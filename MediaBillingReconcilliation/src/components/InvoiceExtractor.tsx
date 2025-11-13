@@ -91,8 +91,8 @@ const InvoiceExtractor: React.FC = () => {
       setReconciliationResult(result);
       console.log('Reconciliation result:', result);
       
-      // Navigate to review screen with reconciliation data
-      navigate('/review', { state: { reconciliationData: result } });
+      // Navigate directly to report screen with reconciliation data
+      navigate('/report', { state: { reconciliationData: result } });
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Failed to reconcile invoice');
       console.error('Reconciliation error:', err);
@@ -446,7 +446,7 @@ const InvoiceExtractor: React.FC = () => {
                   {' '}Running Reconciliation...
                 </>
               ) : (
-                '🔍 Run Reconciliation & Review Discrepancies'
+                '🔍 Run Reconciliation & Generate Report'
               )}
             </button>
           </div>

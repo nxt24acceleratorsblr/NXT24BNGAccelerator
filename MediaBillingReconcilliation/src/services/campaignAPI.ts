@@ -60,20 +60,7 @@ export const reconcileInvoice = async (
     string_threshold?: number;
     number_tolerance?: number;
   }
-): Promise<{
-  status: string;
-  extracted_data: any;
-  mapping_files_count: number;
-  fuzzy_matches: any;
-  discrepancy_report: any[];
-  report_path: string | null;
-  summary: {
-    total_line_items: number;
-    fuzzy_matches: number;
-    discrepancies: number;
-    unmatched: number;
-  };
-}> => {
+): Promise<any> => {
   const response = await axios.post(`${API_BASE_URL}/reconcile-invoice`, {
     extracted_data: extractedData,
     mapping_folder: options?.mapping_folder || '../MediaBillingNotebook/mapping',

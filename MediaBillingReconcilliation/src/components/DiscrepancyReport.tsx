@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ReconciliationResult } from '../types';
 import './DiscrepancyReport.css';
 
-interface DiscrepancyWithStatus {
+interface Discrepancy {
   id: number;
   campaign: string;
   line: number;
@@ -13,41 +13,43 @@ interface DiscrepancyWithStatus {
   difference: any;
   differencePercent?: number;
   severity: string;
-  status: 'approved' | 'rejected';
 }
 
 const DiscrepancyReport: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const reconciliationData = location.state?.reconciliationData as ReconciliationResult;
-  const reviewedDiscrepancies = location.state?.reviewedDiscrepancies as any[];
 
-  const [discrepancies, setDiscrepancies] = useState<DiscrepancyWithStatus[]>([]);
+  const [discrepancies, setDiscrepancies] = useState<Discrepancy[]>([]);
 
   useEffect(() => {
-    if (!reconciliationData || !reviewedDiscrepancies) {
+    if (!reconciliationData) {
       navigate('/extractor');
       return;
     }
 
-    // Transform reviewed discrepancies for report
-    const transformedDiscrepancies: DiscrepancyWithStatus[] = reviewedDiscrepancies
-      .filter(d => d.status !== 'pending')
-      .map(d => ({
-        id: d.id,
-        campaign: d.campaign || 'N/A',
-        line: d.extracted_line,
-        field: d.discrepancies[0].field,
-        invoiceValue: d.discrepancies[0].extracted_value,
-        mappingValue: d.discrepancies[0].mapping_value,
-        difference: d.discrepancies[0].difference,
-        differencePercent: d.discrepancies[0].difference_percent,
-        severity: d.discrepancies[0].severity,
-        status: d.status
-      }));
+    // Transform potential discrepancies for report
+    const transformedDiscrepancies: Discrepancy[] = [];
+    let idCounter = 1;
+
+    reconciliationData.fuzzy_matches.potential_discrepancies.forEach((disc) => {
+      disc.discrepancies.forEach((fieldDisc) => {
+        transformedDiscrepancies.push({
+          id: idCounter++,
+          campaign: disc.campaign || 'N/A',
+          line: disc.extracted_line,
+          field: fieldDisc.field,
+          invoiceValue: fieldDisc.extracted_value,
+          mappingValue: fieldDisc.mapping_value,
+          difference: fieldDisc.difference,
+          differencePercent: fieldDisc.difference_percent,
+          severity: fieldDisc.severity
+        });
+      });
+    });
 
     setDiscrepancies(transformedDiscrepancies);
-  }, [reconciliationData, reviewedDiscrepancies, navigate]);
+  }, [reconciliationData, navigate]);
 
   const handleExportPDF = () => {
     console.log('Exporting report as PDF...');
@@ -82,13 +84,21 @@ const DiscrepancyReport: React.FC = () => {
     }
   };
 
+  const getVendorScoreColor = (score: number) => {
+    if (score >= 90) return '#2e7d32'; // Green
+    if (score >= 75) return '#1976d2'; // Blue
+    if (score >= 60) return '#f57f17'; // Yellow
+    if (score >= 40) return '#e65100'; // Orange
+    return '#c62828'; // Red
+  };
+
   if (!reconciliationData) {
     return <div>Loading...</div>;
   }
 
-  const approvedCount = discrepancies.filter(d => d.status === 'approved').length;
-  const rejectedCount = discrepancies.filter(d => d.status === 'rejected').length;
   const trustScore = reconciliationData.trust_score;
+  const vendorScore = reconciliationData.vendor_score;
+  const vendorName = reconciliationData.extracted_data?.invoice_header?.vendor_name || 'Unknown Vendor';
 
   return (
     <div className="discrepancy-report">
@@ -100,6 +110,51 @@ const DiscrepancyReport: React.FC = () => {
             dateStyle: 'long',
             timeStyle: 'short'
           })}
+        </div>
+      </div>
+
+      {/* Vendor Information */}
+      <div className="vendor-info-section">
+        <h2>🏢 Vendor Information</h2>
+        <div className="vendor-info-container">
+          <div className="vendor-name">
+            <span className="vendor-label">Vendor Name:</span>
+            <span className="vendor-value">{vendorName}</span>
+          </div>
+          {vendorScore ? (
+            <div className="vendor-performance">
+              <div className="vendor-score-badge" style={{ 
+                borderColor: getVendorScoreColor(vendorScore.score),
+                backgroundColor: `${getVendorScoreColor(vendorScore.score)}15`
+              }}>
+                <div className="vendor-score-circle" style={{ color: getVendorScoreColor(vendorScore.score) }}>
+                  {vendorScore.score}
+                </div>
+                <div className="vendor-grade">{vendorScore.grade}</div>
+              </div>
+              <div className="vendor-stats">
+                <div className="vendor-stat-item">
+                  <span className="stat-label">Historical Discrepancies:</span>
+                  <span className="stat-value">{vendorScore.total_discrepancies}</span>
+                </div>
+                <div className="vendor-stat-item">
+                  <span className="stat-label">Reports Analyzed:</span>
+                  <span className="stat-value">{vendorScore.reports_analyzed}</span>
+                </div>
+                <div className="vendor-severity-mini">
+                  <span className="severity-mini critical">🔴 {vendorScore.severity_breakdown.CRITICAL}</span>
+                  <span className="severity-mini high">🟠 {vendorScore.severity_breakdown.HIGH}</span>
+                  <span className="severity-mini medium">🟡 {vendorScore.severity_breakdown.MEDIUM}</span>
+                  <span className="severity-mini low">🟢 {vendorScore.severity_breakdown.LOW}</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="vendor-no-history">
+              <span className="no-history-icon">📊</span>
+              <span className="no-history-text">No historical data available for this vendor yet</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -202,20 +257,6 @@ const DiscrepancyReport: React.FC = () => {
               <p className="card-value">{discrepancies.length}</p>
             </div>
           </div>
-          <div className="summary-card approved">
-            <div className="card-icon">✓</div>
-            <div className="card-content">
-              <h3>Approved</h3>
-              <p className="card-value">{approvedCount}</p>
-            </div>
-          </div>
-          <div className="summary-card rejected">
-            <div className="card-icon">✗</div>
-            <div className="card-content">
-              <h3>Rejected</h3>
-              <p className="card-value">{rejectedCount}</p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -234,12 +275,11 @@ const DiscrepancyReport: React.FC = () => {
                   <th>Mapping Value</th>
                   <th>Difference</th>
                   <th>Severity</th>
-                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {discrepancies.map((disc) => (
-                  <tr key={disc.id} className={`status-${disc.status}`}>
+                  <tr key={disc.id}>
                     <td>{disc.campaign}</td>
                     <td>{disc.line}</td>
                     <td className="field-cell">{disc.field}</td>
@@ -251,11 +291,6 @@ const DiscrepancyReport: React.FC = () => {
                     <td className="severity-cell">
                       <span className={`severity-badge ${disc.severity.toLowerCase()}`}>
                         {disc.severity}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`status-badge status-${disc.status}`}>
-                        {disc.status === 'approved' ? '✓ Approved' : '✗ Rejected'}
                       </span>
                     </td>
                   </tr>
@@ -270,18 +305,6 @@ const DiscrepancyReport: React.FC = () => {
       <div className="recommendations-section">
         <h2>💡 Recommendations</h2>
         <ul className="recommendations-list">
-          {approvedCount > 0 && (
-            <li>
-              <span className="recommendation-icon">✓</span>
-              <span>{approvedCount} approved discrepancies are within acceptable variance thresholds</span>
-            </li>
-          )}
-          {rejectedCount > 0 && (
-            <li>
-              <span className="recommendation-icon">⚠️</span>
-              <span>Review {rejectedCount} rejected line items with vendor for correction</span>
-            </li>
-          )}
           {trustScore.level === 'EXCELLENT' && (
             <li>
               <span className="recommendation-icon">🎉</span>
@@ -292,6 +315,24 @@ const DiscrepancyReport: React.FC = () => {
             <li>
               <span className="recommendation-icon">🚨</span>
               <span>Critical issues detected - immediate vendor consultation required</span>
+            </li>
+          )}
+          {vendorScore && vendorScore.score < 60 && (
+            <li>
+              <span className="recommendation-icon">📊</span>
+              <span>Vendor performance score is {vendorScore.grade} - consider reviewing vendor relationship or SLA requirements</span>
+            </li>
+          )}
+          {vendorScore && vendorScore.score >= 90 && (
+            <li>
+              <span className="recommendation-icon">⭐</span>
+              <span>Vendor has excellent historical performance ({vendorScore.grade}) - maintain strong partnership</span>
+            </li>
+          )}
+          {vendorScore && vendorScore.severity_breakdown.CRITICAL > 0 && (
+            <li>
+              <span className="recommendation-icon">🔴</span>
+              <span>Vendor has {vendorScore.severity_breakdown.CRITICAL} critical discrepancies in historical data - prioritize data quality discussion</span>
             </li>
           )}
           {reconciliationData.summary.unmatched > 0 && (

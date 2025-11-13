@@ -407,13 +407,14 @@ def calculate_trust_score(fuzzy_matches: dict) -> dict:
     }
 
 
-def generate_discrepancy_report(fuzzy_matches: dict) -> pd.DataFrame:
-    """Generate a detailed discrepancy report as a DataFrame."""
+def generate_discrepancy_report(fuzzy_matches: dict, vendor_name: str = None) -> pd.DataFrame:
+    """Generate a detailed discrepancy report as a DataFrame with vendor information."""
     report_data = []
     
     for disc in fuzzy_matches.get('potential_discrepancies', []):
         for field_disc in disc.get('discrepancies', []):
             report_data.append({
+                'Vendor Name': vendor_name or 'Unknown',
                 'Source': 'Fuzzy Match',
                 'Mapping File': disc.get('mapping_file'),
                 'Campaign': disc.get('campaign'),
@@ -445,6 +446,127 @@ def save_discrepancy_report(df: pd.DataFrame, output_path: str = None) -> str:
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_path, index=False)
     return output_path
+
+
+def calculate_vendor_score(vendor_name: str = None, output_folder: str = 'output') -> dict:
+    """
+    Calculate vendor performance score based on historical discrepancy reports.
+    Reads all CSV files in output folder and aggregates vendor performance.
+    
+    Args:
+        vendor_name: Specific vendor to calculate score for (None = all vendors)
+        output_folder: Folder containing discrepancy CSV files
+    
+    Returns:
+        Dictionary with vendor scores and statistics
+    """
+    output_path = Path(output_folder)
+    
+    if not output_path.exists():
+        return {
+            'error': f'Output folder not found: {output_folder}',
+            'vendor_scores': []
+        }
+    
+    # Find all CSV files
+    csv_files = list(output_path.glob('discrepancy_report_*.csv'))
+    
+    if not csv_files:
+        return {
+            'message': 'No discrepancy reports found',
+            'vendor_scores': []
+        }
+    
+    # Aggregate all discrepancy data
+    all_data = []
+    for csv_file in csv_files:
+        try:
+            df = pd.read_csv(csv_file)
+            # Check if Vendor Name column exists, if not skip this file
+            if 'Vendor Name' not in df.columns:
+                print(f"⚠️  Skipping {csv_file.name} - missing 'Vendor Name' column")
+                continue
+            all_data.append(df)
+        except Exception as e:
+            print(f"Error reading {csv_file}: {str(e)}")
+    
+    if not all_data:
+        return {
+            'message': 'No valid CSV data with Vendor Name column found',
+            'vendor_scores': []
+        }
+    
+    # Combine all data
+    combined_df = pd.concat(all_data, ignore_index=True)
+    
+    # Filter by vendor if specified
+    if vendor_name:
+        combined_df = combined_df[combined_df['Vendor Name'] == vendor_name]
+        if combined_df.empty:
+            return {
+                'message': f'No data found for vendor: {vendor_name}',
+                'vendor_scores': []
+            }
+    
+    # Calculate vendor scores
+    vendor_scores = []
+    
+    for vendor in combined_df['Vendor Name'].unique():
+        vendor_data = combined_df[combined_df['Vendor Name'] == vendor]
+        
+        total_discrepancies = len(vendor_data)
+        severity_counts = vendor_data['Severity'].value_counts().to_dict()
+        
+        # Calculate weighted score (same logic as trust score but inverted)
+        severity_weights = {
+            'CRITICAL': -15,
+            'HIGH': -8,
+            'MEDIUM': -4,
+            'LOW': -1
+        }
+        
+        base_score = 100
+        deductions = sum(
+            severity_counts.get(severity, 0) * weight
+            for severity, weight in severity_weights.items()
+        )
+        
+        vendor_score = max(0, min(100, base_score + deductions))
+        
+        # Determine grade
+        if vendor_score >= 90:
+            grade = 'A (Excellent)'
+        elif vendor_score >= 75:
+            grade = 'B (Good)'
+        elif vendor_score >= 60:
+            grade = 'C (Fair)'
+        elif vendor_score >= 40:
+            grade = 'D (Poor)'
+        else:
+            grade = 'F (Critical)'
+        
+        vendor_scores.append({
+            'vendor_name': vendor,
+            'score': round(vendor_score, 2),
+            'grade': grade,
+            'total_discrepancies': total_discrepancies,
+            'severity_breakdown': {
+                'CRITICAL': severity_counts.get('CRITICAL', 0),
+                'HIGH': severity_counts.get('HIGH', 0),
+                'MEDIUM': severity_counts.get('MEDIUM', 0),
+                'LOW': severity_counts.get('LOW', 0)
+            },
+            'reports_analyzed': len([f for f in csv_files if vendor in pd.read_csv(f)['Vendor Name'].values])
+        })
+    
+    # Sort by score descending
+    vendor_scores.sort(key=lambda x: x['score'], reverse=True)
+    
+    return {
+        'total_vendors': len(vendor_scores),
+        'total_reports_analyzed': len(csv_files),
+        'vendor_scores': vendor_scores
+    }
 
 
 # ============================================
@@ -503,8 +625,11 @@ def run_invoice_reconciliation(invoice_file_path: str,
     # Calculate trust score
     trust_score = calculate_trust_score(fuzzy_matches)
     
-    # Generate report
-    discrepancy_df = generate_discrepancy_report(fuzzy_matches)
+    # Get vendor name from extracted data
+    vendor_name = extracted_data.get('invoice_header', {}).get('vendor_name')
+    
+    # Generate report with vendor name
+    discrepancy_df = generate_discrepancy_report(fuzzy_matches, vendor_name)
     
     report_path = None
     if save_report and not discrepancy_df.empty:

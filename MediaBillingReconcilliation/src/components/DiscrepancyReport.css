@@ -30,6 +30,140 @@
   font-style: italic;
 }
 
+/* Vendor Information Section */
+.vendor-info-section {
+  background: var(--card-background);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.vendor-info-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+}
+
+.vendor-info-container {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  flex-wrap: wrap;
+}
+
+.vendor-name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.vendor-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vendor-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.vendor-performance {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex: 1;
+}
+
+.vendor-score-badge {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 3px solid;
+  background: var(--card-background);
+}
+
+.vendor-score-circle {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.vendor-grade {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.vendor-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.vendor-stat-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: var(--background);
+  border-radius: 6px;
+}
+
+.vendor-stat-item .stat-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.vendor-stat-item .stat-value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.vendor-severity-mini {
+  display: flex;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--background);
+  border-radius: 6px;
+}
+
+.severity-mini {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.vendor-no-history {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background-color: var(--background);
+  border-radius: 8px;
+  border: 1px dashed var(--border-color);
+}
+
+.no-history-icon {
+  font-size: 32px;
+}
+
+.no-history-text {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-style: italic;
+}
+
 /* Trust Score Section */
 .trust-score-section {
   background: var(--card-background);
@@ -223,14 +357,6 @@
   background: var(--warning-light);
 }
 
-.summary-card.approved {
-  border-color: var(--success-color);
-}
-
-.summary-card.rejected {
-  border-color: var(--error-color);
-}
-
 .card-icon {
   font-size: 2rem;
   flex-shrink: 0;
@@ -371,25 +497,7 @@
   font-style: italic;
 }
 
-.status-badge {
-  display: inline-block;
-  padding: 0.4rem 0.8rem;
-  border-radius: 16px;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.status-badge.status-approved {
-  background: var(--success-light);
-  color: var(--success-dark);
-}
-
-.status-badge.status-rejected {
-  background: var(--error-light);
-  color: var(--error-dark);
-}
-
-/* Severity badges */
+/* Export and Action Buttons */
 .severity-badge {
   display: inline-block;
   padding: 0.4rem 0.8rem;
@@ -537,6 +645,43 @@
     grid-template-columns: 1fr;
   }
 
+  .vendor-info-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .vendor-performance {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .vendor-score-badge {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .vendor-stats {
+    width: 100%;
+  }
+
+  .trust-score-container {
+    flex-direction: column;
+  }
+
+  .trust-score-circle {
+    width: 150px;
+    height: 150px;
+  }
+
+  .trust-score-value {
+    font-size: 3rem;
+  }
+
+  .severity-bar-item {
+    grid-template-columns: 100px 1fr 50px;
+    gap: 0.5rem;
+  }
+
   .report-actions {
     flex-direction: column;
     width: 100%;
@@ -560,3 +705,4 @@
     padding: 0.5rem;
   }
 }
+

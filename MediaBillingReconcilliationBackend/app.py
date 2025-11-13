@@ -179,11 +179,26 @@ def reconcile_invoice():
             # Calculate trust score
             trust_score = calculate_trust_score(fuzzy_matches)
             
-            # Generate report
-            discrepancy_df = generate_discrepancy_report(fuzzy_matches)
+            # Get vendor name from extracted data
+            vendor_name = extracted_data.get('invoice_header', {}).get('vendor_name')
+            
+            # Generate report with vendor name
+            discrepancy_df = generate_discrepancy_report(fuzzy_matches, vendor_name)
             report_path = None
             if not discrepancy_df.empty:
                 report_path = save_discrepancy_report(discrepancy_df)
+            
+            # Calculate vendor score from historical data
+            from services.invoice_reconciliation import calculate_vendor_score
+            vendor_score = None
+            if vendor_name:
+                try:
+                    vendor_score_result = calculate_vendor_score(vendor_name, 'output')
+                    if 'vendor_scores' in vendor_score_result and vendor_score_result['vendor_scores']:
+                        vendor_score = vendor_score_result['vendor_scores'][0]
+                except Exception as e:
+                    print(f"⚠️  Warning: Could not calculate vendor score: {str(e)}")
+                    # Continue without vendor score - don't fail the whole reconciliation
             
             return jsonify({
                 'success': True,
@@ -194,6 +209,7 @@ def reconcile_invoice():
                 'discrepancy_report': discrepancy_df.to_dict('records') if not discrepancy_df.empty else [],
                 'report_path': report_path,
                 'trust_score': trust_score,
+                'vendor_score': vendor_score,
                 'summary': {
                     'total_line_items': len(extracted_data.get('line_items', [])),
                     'fuzzy_matches': len(fuzzy_matches['fuzzy_matches']),
@@ -227,6 +243,36 @@ def reconcile_invoice():
         
         else:
             return jsonify({'error': 'Either extracted_data or filepath required'}), 400
+    
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
+@app.route('/api/vendor-scores', methods=['GET'])
+def get_vendor_scores():
+    """
+    Calculate vendor performance scores based on historical discrepancy reports.
+    Query params:
+        - vendor_name (optional): Filter by specific vendor
+        - output_folder (optional): Custom output folder path (default: 'output')
+    Returns: Vendor scores and statistics from audit trail CSVs
+    """
+    try:
+        from services.invoice_reconciliation import calculate_vendor_score
+        
+        vendor_name = request.args.get('vendor_name')
+        output_folder = request.args.get('output_folder', 'output')
+        
+        # Calculate vendor scores
+        results = calculate_vendor_score(vendor_name, output_folder)
+        
+        return jsonify({
+            'success': True,
+            **results
+        })
     
     except Exception as e:
         import traceback
