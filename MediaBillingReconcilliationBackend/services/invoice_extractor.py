@@ -30,54 +30,52 @@ You MUST output a JSON object matching this EXACT structure:
 
 {
   "invoice_header": {
-    "invoice_number": string or null,
-    "vendor_name": string or null,
-    "campaign_name": string or null,
-    "invoice_date": string or null,
-    "billing_start_date": string or null,
-    "billing_end_date": string or null,
-    "currency": string or null,
-    "total_impressions": number or null,
-    "total_views": number or null,
-    "total_clicks": number or null,
-    "gross_revenue": number or null,
-    "net_revenue": number or null,
-    "total_discount_amount": number or null,
-    "discount_percent": number or null,
-    "profit": number or null
+    "invoice_number": "INV-2025-001",
+    "vendor_name": "BrightAds Global",
+    "invoice_date": "2025-11-13",
+    "billing_start_date": "2025-10-01",
+    "billing_end_date": "2025-10-31",
+    "currency": "USD",
+    "gross_revenue": 17657,
+    "discount_amount": 500,
+    "discount_percent": 5,
+    "tax": 2100
   },
   "line_items": [
     {
-      "line_id": integer,
-      "campaign_name": string or null,
-      "placement": string or null,
-      "start_date": string or null,
-      "end_date": string or null,
-      "planned_impressions": number or null,
-      "billed_impressions": number or null,
-      "views": number or null,
-      "clicks": number or null,
-      "gross_revenue": number or null,
-      "net_revenue": number or null,
-      "discount_amount": number or null,
-      "discount_percent": number or null,
-      "profit": number or null,
-      "rate_type": string or null,
-      "rate": number or null
+      "line_id": 1,
+      "campaign_name": "Summer Blast",
+      "campaign_id": null,
+      "insertion_order_ID": "IO-900",
+      "start_date": "2025-10-14",
+      "end_date": "2025-10-30",
+      "duration_days": 17,
+      "booked_impressions": 636375,
+      "billed_impressions": 931870,
+      "views": null,
+      "clicks": 5682,
+      "gross_revenue": 4500,
+      "net_revenue": 4018,
+      "discount_amount": 482,
+      "discount_percent": 5,
+      "profit": null,
+      "rate_type": "CPM",
+      "rate": 6.0
     }
   ],
-  "notes": string or null
+  "notes": null
 }
 
 EXTRACTION RULES:
 1. Use null for missing values - DO NOT INVENT DATA
-2. Discounts: Extract explicit or calculate implicit (gross - net)
-3. Profit: Use stated value or calculate (revenue - cost) if available
-4. Metrics: Map views/impressions/clicks to closest available field
-5. Dates: Convert to YYYY-MM-DD format when possible
-6. Line Items: Each table row becomes one line_item with sequential line_id
-7. Aggregation: Sum line_items for header totals when not explicit
-8. Currency: Extract currency code (USD, EUR, GBP, etc.)
+2. MANDATORY: Extract start_date and end_date from Dates column, then calculate duration_days
+3. For duration_days: Parse "2025-10-14 to 2025-10-30" → start_date="2025-10-14", end_date="2025-10-30", duration_days=17 (inclusive count)
+4. Discounts: Extract explicit or calculate implicit (gross - net)
+5. Profit: Use stated value or calculate (revenue - cost) if available
+6. Metrics: Map views/impressions/clicks to closest available field
+7. Dates: Convert to YYYY-MM-DD format when possible
+8. Line Items: Each table row becomes one line_item with sequential line_id
+9. Currency: Extract currency code (USD, EUR, GBP, etc.)
 """
 
 # ============================================
@@ -252,7 +250,7 @@ def build_invoice_context(file_path: str, max_rows: int = 50) -> str:
 
 invoice_extraction_agent = Agent(
     role='Media Invoice Data Extraction Specialist',
-    goal='Extract structured financial and delivery data from media invoices into canonical JSON format',
+    goal='Extract structured financial and delivery data from media invoices into canonical JSON format, including accurate campaign duration calculations',
     backstory="""You are an expert in media billing and invoice processing. 
     You understand advertising metrics (impressions, views, clicks), financial terms 
     (revenue, costs, discounts, profit), and how to extract data accurately from 
@@ -262,7 +260,11 @@ invoice_extraction_agent = Agent(
     patterns, and extracting meaningful data even when formatting is inconsistent.
     You always follow the canonical schema strictly and never invent data - you use null 
     for missing values. When dealing with OCR text, you intelligently parse tables and 
-    structured data even when spacing or alignment is imperfect.""",
+    structured data even when spacing or alignment is imperfect.
+    
+    You are meticulous about extracting date ranges from the Dates column and calculating
+    campaign duration in days. You parse date ranges like "2025-10-14 to 2025-10-30" and
+    calculate duration_days as the number of days from start to end, inclusive.""",
     llm=llm,
     tools=[],
     verbose=True,
@@ -288,12 +290,17 @@ Extract structured invoice data from the provided file and map it to the canonic
 2. Extract all line items with sequential line_id starting from 1
 3. Map financial metrics (revenue, costs, discounts, profit)
 4. Map delivery metrics (impressions, views, clicks)
-5. Calculate implicit discounts if gross and net revenue differ
-6. Use null for missing values - DO NOT INVENT DATA
-7. For OCR-extracted text: Look for patterns and table structures even if spacing/formatting is imperfect
-8. Handle OCR artifacts gracefully (e.g., misread characters, spacing issues)
-9. Add clarifications to 'notes' field if needed or if OCR quality affected extraction
-10. Return ONLY valid JSON - no markdown, no explanations
+5. **CRITICAL: Extract date ranges from the Dates column and calculate duration_days:**
+   - Parse the Dates field (format: "YYYY-MM-DD to YYYY-MM-DD")
+   - Extract start_date and end_date separately  
+   - Calculate duration_days = (end_date - start_date) + 1 (inclusive count)
+   - Example: "2025-10-14 to 2025-10-30" → start_date: "2025-10-14", end_date: "2025-10-30", duration_days: 17
+6. Calculate implicit discounts if gross and net revenue differ
+7. Use null for missing values - DO NOT INVENT DATA
+8. For OCR-extracted text: Look for patterns and table structures even if spacing/formatting is imperfect
+9. Handle OCR artifacts gracefully (e.g., misread characters, spacing issues)
+10. Add clarifications to 'notes' field if needed or if OCR quality affected extraction
+11. Return ONLY valid JSON - no markdown, no explanations
 
 **OUTPUT REQUIREMENT:**
 Return a single valid JSON object following the canonical schema exactly.
@@ -362,7 +369,43 @@ def extract_invoice_data(file_path: str, max_rows: int = 50) -> Dict[str, Any]:
                 "raw_response": result_str[:500]
             }
     
+    # Post-process: Calculate duration_days if missing
+    parsed = calculate_missing_durations(parsed)
+    
     return parsed
+
+
+def calculate_missing_durations(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Post-process extracted data to calculate duration_days if missing.
+    Ensures all line items have duration_days calculated from start_date and end_date.
+    """
+    from datetime import datetime
+    
+    if "line_items" not in data or not isinstance(data["line_items"], list):
+        return data
+    
+    for item in data["line_items"]:
+        # Only calculate if duration_days is missing but we have dates
+        if item.get("duration_days") is None:
+            start_date = item.get("start_date")
+            end_date = item.get("end_date")
+            
+            if start_date and end_date:
+                try:
+                    # Parse dates
+                    start = datetime.strptime(str(start_date).strip(), '%Y-%m-%d')
+                    end = datetime.strptime(str(end_date).strip(), '%Y-%m-%d')
+                    
+                    # Calculate duration (inclusive)
+                    duration = (end - start).days + 1
+                    item["duration_days"] = duration if duration > 0 else None
+                    
+                    print(f"   ✓ Calculated duration for {item.get('campaign_name', 'Unknown')}: {duration} days")
+                except (ValueError, AttributeError) as e:
+                    print(f"   ⚠ Could not calculate duration for {item.get('campaign_name', 'Unknown')}: {e}")
+    
+    return data
 
 
 # ============================================

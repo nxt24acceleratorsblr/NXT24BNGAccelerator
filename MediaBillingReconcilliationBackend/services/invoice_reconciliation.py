@@ -77,6 +77,7 @@ def normalize_mapping_data(mapping_data: dict) -> dict:
     
     line_items = mapping_data.get('LineItems', [])
     for idx, item in enumerate(line_items, 1):
+        dates_str = item.get('Dates')
         normalized_item = {
             'line_id': idx,
             'campaign_name': item.get('Campaign'),
@@ -90,7 +91,8 @@ def normalize_mapping_data(mapping_data: dict) -> dict:
             'discount': item.get('Discount'),
             'net_cost': parse_currency(item.get('Net Cost')),
             'geo': item.get('Geo'),
-            'dates': item.get('Dates'),
+            'dates': dates_str,
+            'duration_days': parse_duration(dates_str),
             'creative': item.get('Creative'),
             'tracking': item.get('Tracking'),
             'notes': item.get('Notes'),
@@ -121,6 +123,28 @@ def parse_currency(value) -> Optional[float]:
             clean_value = value.replace('$', '').replace(',', '').strip()
             return float(clean_value)
         return float(value)
+    except (ValueError, AttributeError):
+        return None
+
+
+def parse_duration(dates_str: str) -> Optional[int]:
+    """Parse duration from date range string (e.g., '2025-10-01 to 2025-10-15')."""
+    if not dates_str:
+        return None
+    try:
+        from datetime import datetime
+        # Split on ' to ' and handle various formats
+        parts = dates_str.replace(' - ', ' to ').split(' to ')
+        if len(parts) != 2:
+            return None
+        
+        # Try to parse dates
+        start_date = datetime.strptime(parts[0].strip(), '%Y-%m-%d')
+        end_date = datetime.strptime(parts[1].strip(), '%Y-%m-%d')
+        
+        # Calculate duration in days (inclusive)
+        duration = (end_date - start_date).days + 1
+        return duration if duration > 0 else None
     except (ValueError, AttributeError):
         return None
 
@@ -211,7 +235,8 @@ def compare_line_items_fuzzy(extracted: dict, mapping: dict,
         'clicks': 1.5,
         'net_cost': 2.5,
         'gross_revenue': 2.0,
-        'net_revenue': 2.0
+        'net_revenue': 2.0,
+        'duration_days': 2.0
     }
     
     for field, weight in numerical_fields.items():
