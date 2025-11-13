@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { extractInvoice, reconcileInvoice } from '../services/campaignAPI';
-import { InvoiceExtractionResult, ReconciliationResult } from '../types';
+import { InvoiceExtractionResult } from '../types';
 import './InvoiceExtractor.css';
 
 const InvoiceExtractor: React.FC = () => {
   const navigate = useNavigate();
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionProgress, setExtractionProgress] = useState(0);
   const [isReconciling, setIsReconciling] = useState(false);
   const [extractionResult, setExtractionResult] = useState<InvoiceExtractionResult | null>(null);
   const [reconciliationResult, setReconciliationResult] = useState<any>(null);
@@ -51,6 +52,14 @@ const InvoiceExtractor: React.FC = () => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleReset = () => {
+    setUploadedFiles([]);
+    setExtractionResult(null);
+    setReconciliationResult(null);
+    setError(null);
+    setExtractionProgress(0);
+  };
+
   const handleExtract = async () => {
     if (uploadedFiles.length === 0) {
       setError('Please select at least one file');
@@ -58,14 +67,29 @@ const InvoiceExtractor: React.FC = () => {
     }
 
     setIsExtracting(true);
+    setExtractionProgress(0);
     setError(null);
     setReconciliationResult(null); // Reset reconciliation when re-extracting
+
+    // Simulate progress
+    const progressInterval = setInterval(() => {
+      setExtractionProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90;
+        }
+        return prev + 10;
+      });
+    }, 300);
 
     try {
       // For now, extract the first file. In future, handle multiple files
       const result = await extractInvoice(uploadedFiles[0], 50);
+      clearInterval(progressInterval);
+      setExtractionProgress(100);
       setExtractionResult(result);
     } catch (err: any) {
+      clearInterval(progressInterval);
       setError(err.response?.data?.error || err.message || 'Failed to extract invoice data');
       console.error('Extraction error:', err);
     } finally {
@@ -150,11 +174,14 @@ const InvoiceExtractor: React.FC = () => {
       </div>
 
       <div className="extractor-content">
-        {/* Supported Formats */}
-        <p className="supported-formats">Supported Formats: PDF, XLS, CSV, Email (.eml), Images (PNG/JPG), HTML, TXT</p>
+        {/* Show upload section only when not extracting and no results */}
+        {!isExtracting && !extractionResult && (
+          <>
+            {/* Supported Formats */}
+            <p className="supported-formats">Supported Formats: PDF, XLS, CSV, Email (.eml), Images (PNG/JPG), HTML, TXT</p>
 
-        {/* File Upload Section */}
-        <div className="upload-section">
+            {/* File Upload Section */}
+            <div className="upload-section">
           <div 
             className={`file-upload-area ${dragActive ? 'drag-active' : ''}`}
             onDragEnter={handleDrag}
@@ -218,7 +245,38 @@ const InvoiceExtractor: React.FC = () => {
               'Extract Report'
             )}
           </button>
-        </div>
+            </div>
+          </>
+        )}
+
+        {/* Extraction Progress */}
+        {isExtracting && (
+          <div className="extraction-progress-section">
+            <div className="progress-content">
+              <div className="progress-icon">
+                <span className="spinner-large"></span>
+              </div>
+              <h2>Extracting Invoice Data...</h2>
+              <p className="progress-subtitle">Analyzing {uploadedFiles[0]?.name}</p>
+              <div className="progress-bar-wrapper">
+                <div className="progress-bar-track">
+                  <div 
+                    className="progress-bar-fill" 
+                    style={{ width: `${extractionProgress}%` }}
+                  >
+                    <span className="progress-percentage">{extractionProgress}%</span>
+                  </div>
+                </div>
+              </div>
+              <p className="progress-status">
+                {extractionProgress < 30 && 'Reading file contents...'}
+                {extractionProgress >= 30 && extractionProgress < 60 && 'Analyzing structure...'}
+                {extractionProgress >= 60 && extractionProgress < 90 && 'Extracting data fields...'}
+                {extractionProgress >= 90 && 'Finalizing extraction...'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Error Display */}
         {error && (
@@ -228,19 +286,12 @@ const InvoiceExtractor: React.FC = () => {
           </div>
         )}
 
-        {/* Validation Status */}
-        {extractionResult && (
-          <div className={`validation-status ${extractionResult.validation.valid ? 'valid' : 'invalid'}`}>
-            <div className="validation-header">
-              <span className="validation-icon">
-                {extractionResult.validation.valid ? '✅' : '⚠️'}
-              </span>
-              <h3>{extractionResult.validation.valid ? 'Extraction Successful' : 'Extraction Completed with Warnings'}</h3>
-            </div>
-            
+        {/* Show validation errors/warnings inline if any */}
+        {extractionResult && (extractionResult.validation.errors.length > 0 || extractionResult.validation.warnings.length > 0) && (
+          <div className="inline-validation">
             {extractionResult.validation.errors.length > 0 && (
-              <div className="validation-errors">
-                <h4>Errors:</h4>
+              <div className="validation-errors-inline">
+                <h4>⚠️ Errors:</h4>
                 <ul>
                   {extractionResult.validation.errors.map((err, idx) => (
                     <li key={idx}>{err}</li>
@@ -248,10 +299,9 @@ const InvoiceExtractor: React.FC = () => {
                 </ul>
               </div>
             )}
-
             {extractionResult.validation.warnings.length > 0 && (
-              <div className="validation-warnings">
-                <h4>Warnings:</h4>
+              <div className="validation-warnings-inline">
+                <h4>⚠️ Warnings:</h4>
                 <ul>
                   {extractionResult.validation.warnings.map((warn, idx) => (
                     <li key={idx}>{warn}</li>
@@ -435,6 +485,12 @@ const InvoiceExtractor: React.FC = () => {
         {/* Action Buttons */}
         {extractionResult && (
           <div className="action-buttons-section">
+            <button
+              className="btn btn-secondary"
+              onClick={handleReset}
+            >
+              ← Upload New Invoice
+            </button>
             <button
               className={`btn btn-primary ${isReconciling ? 'reconciling' : ''}`}
               onClick={handleReconcile}

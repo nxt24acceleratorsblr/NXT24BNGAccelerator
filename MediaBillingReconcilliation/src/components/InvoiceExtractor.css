@@ -224,6 +224,90 @@
   to { transform: rotate(360deg); }
 }
 
+/* Extraction Progress Section */
+.extraction-progress-section {
+  background: var(--card-background);
+  border-radius: 16px;
+  padding: 4rem 3rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.progress-content {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.progress-icon {
+  margin-bottom: 1.5rem;
+}
+
+.spinner-large {
+  display: inline-block;
+  width: 64px;
+  height: 64px;
+  border: 6px solid rgba(99, 102, 241, 0.2);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.extraction-progress-section h2 {
+  font-size: 1.75rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.progress-subtitle {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+.progress-bar-wrapper {
+  margin-bottom: 1.5rem;
+}
+
+.progress-bar-track {
+  width: 100%;
+  height: 32px;
+  background: var(--progress-bg);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-color), #8B5CF6);
+  border-radius: 16px;
+  transition: width 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 12px;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.progress-percentage {
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.progress-status {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-style: italic;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* Error Message */
 .error-message {
   background: var(--error-light);
@@ -240,54 +324,43 @@
   font-size: 1.5rem;
 }
 
-/* Validation Status */
-.validation-status {
+/* Inline Validation */
+.inline-validation {
   background: var(--card-background);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border-left: 4px solid var(--success-color);
+  border-left: 4px solid var(--warning-color);
 }
 
-.validation-status.invalid {
-  border-left-color: var(--warning-color);
-}
-
-.validation-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+.validation-errors-inline,
+.validation-warnings-inline {
   margin-bottom: 1rem;
 }
 
-.validation-header h3 {
-  color: var(--text-primary);
+.validation-errors-inline:last-child,
+.validation-warnings-inline:last-child {
+  margin-bottom: 0;
 }
 
-.validation-icon {
-  font-size: 1.8rem;
-}
-
-.validation-errors,
-.validation-warnings {
-  margin-top: 1rem;
-}
-
-.validation-errors h4 {
+.validation-errors-inline h4 {
   color: var(--error-color);
   margin-bottom: 0.5rem;
+  font-size: 1rem;
 }
 
-.validation-warnings h4 {
+.validation-warnings-inline h4 {
   color: var(--warning-color);
   margin-bottom: 0.5rem;
+  font-size: 1rem;
 }
 
-.validation-errors ul,
-.validation-warnings ul {
+.validation-errors-inline ul,
+.validation-warnings-inline ul {
   margin: 0;
   padding-left: 1.5rem;
   color: var(--text-primary);
+  font-size: 0.95rem;
 }
 
 /* Invoice Header Section */
@@ -551,7 +624,8 @@
 /* Action Buttons Section */
 .action-buttons-section {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 1rem;
   margin-top: 1rem;
 }
 
@@ -563,6 +637,18 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex: 1;
+}
+
+.action-buttons-section .btn-secondary {
+  background: var(--card-background);
+  color: var(--text-primary);
+  border: 2px solid var(--border-color);
+}
+
+.action-buttons-section .btn-secondary:hover {
+  background: var(--secondary-hover);
+  transform: translateY(-2px);
 }
 
 .action-buttons-section .btn-primary {
@@ -574,6 +660,12 @@
   background: var(--primary-dark);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.action-buttons-section .btn-primary:disabled {
+  background: var(--disabled-bg);
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Responsive */
