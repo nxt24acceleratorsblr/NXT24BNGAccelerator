@@ -2,7 +2,8 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+  background: var(--page-background);
+  transition: background 0.3s ease;
 }
 
 .main-content {

@@ -1,9 +1,9 @@
 .footer {
-  background: #0a0a0a;
-  border-top: 1px solid #333;
+  background: var(--footer-background);
+  border-top: 1px solid var(--footer-border);
   padding: 1.5rem 2rem;
   text-align: center;
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .footer-container {
@@ -25,17 +25,17 @@
 }
 
 .footer-links a {
-  color: #00d4ff;
+  color: var(--link-color);
   text-decoration: none;
   transition: color 0.2s;
 }
 
 .footer-links a:hover {
-  color: #0099ff;
+  color: var(--link-hover);
 }
 
 .footer-links span {
-  color: #444;
+  color: var(--text-tertiary);
 }
 
 @media (max-width: 768px) {

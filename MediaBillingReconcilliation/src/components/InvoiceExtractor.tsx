@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { extractInvoice } from '../services/campaignAPI';
 import { InvoiceExtractionResult } from '../types';
 import './InvoiceExtractor.css';
 
 const InvoiceExtractor: React.FC = () => {
+  const navigate = useNavigate();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionResult, setExtractionResult] = useState<InvoiceExtractionResult | null>(null);
@@ -334,6 +336,18 @@ const InvoiceExtractor: React.FC = () => {
               }}
             >
               💾 Export as JSON
+            </button>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        {extractionResult && (
+          <div className="action-buttons-section">
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate('/review')}
+            >
+              Proceed to Review →
             </button>
           </div>
         )}
