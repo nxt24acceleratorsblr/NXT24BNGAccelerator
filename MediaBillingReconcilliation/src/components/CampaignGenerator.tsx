@@ -1,15 +1,6 @@
 import { useState } from 'react';
 import './CampaignGenerator.css';
-import ProgressTracker from './ProgressTracker';
-import ResultsDisplay from './ResultsDisplay';
-import {
-  generateMarketResearch,
-  generateContentStrategy,
-  generateSocialMediaCampaign,
-  generateEmailCampaign,
-} from '../services/campaign';
 import { uploadFile } from '../services/campaignAPI';
-import type { CampaignResult, AgentTask } from '../types';
 
 const CampaignGenerator = () => {
   const [productName, setProductName] = useState('iPhone 17');
@@ -19,25 +10,7 @@ const CampaignGenerator = () => {
   const [parsedData, setParsedData] = useState<any>(null);
   const [inputMethod, setInputMethod] = useState<'manual' | 'file'>('manual');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [campaignResult, setCampaignResult] = useState<CampaignResult>({
-    status: 'idle',
-  });
-  const [tasks, setTasks] = useState<AgentTask[]>([
-    { id: 1, name: 'Market Research', description: 'Analyzing market trends and competitors', status: 'pending' },
-    { id: 2, name: 'Content Strategy', description: 'Creating taglines and messaging', status: 'pending' },
-    { id: 3, name: 'Social Media', description: 'Designing viral campaigns', status: 'pending' },
-    { id: 4, name: 'Email Campaign', description: 'Crafting conversion emails', status: 'pending' },
-  ]);
-
-  const updateTaskStatus = (taskId: number, status: AgentTask['status'], result?: string) => {
-    setTasks(prev =>
-      prev.map(task =>
-        task.id === taskId ? { ...task, status, result } : task
-      )
-    );
-  };
-
+  
   const getFileTypeIcon = (type: string): string => {
     const icons: Record<string, string> = {
       pdf: '📄',
@@ -96,9 +69,6 @@ const CampaignGenerator = () => {
   };
 
   const handleGenerate = async () => {
-    const contextToUse = inputMethod === 'file' && fileContent 
-      ? fileContent 
-      : `Product: ${productName}`;
 
     if (inputMethod === 'manual' && !productName.trim()) {
       alert('Please enter a product name');
@@ -111,62 +81,6 @@ const CampaignGenerator = () => {
     }
 
     setIsGenerating(true);
-    setCurrentStep(0);
-    setCampaignResult({ status: 'loading' });
-
-    // Reset all tasks
-    setTasks(prev => prev.map(task => ({ ...task, status: 'pending', result: undefined })));
-
-    try {
-      // Step 1: Market Research
-      setCurrentStep(1);
-      updateTaskStatus(1, 'running');
-      const research = await generateMarketResearch(productName, contextToUse);
-      updateTaskStatus(1, 'completed', research.rawOutput);
-      setCampaignResult(prev => ({ ...prev, marketResearch: research }));
-
-      // Step 2: Content Strategy
-      setCurrentStep(2);
-      updateTaskStatus(2, 'running');
-      const content = await generateContentStrategy(productName, research.rawOutput);
-      updateTaskStatus(2, 'completed', content.rawOutput);
-      setCampaignResult(prev => ({ ...prev, contentStrategy: content }));
-
-      // Step 3: Social Media Campaign
-      setCurrentStep(3);
-      updateTaskStatus(3, 'running');
-      const social = await generateSocialMediaCampaign(productName, content.rawOutput);
-      updateTaskStatus(3, 'completed', social.rawOutput);
-      setCampaignResult(prev => ({ ...prev, socialMedia: social }));
-
-      // Step 4: Email Campaign
-      setCurrentStep(4);
-      updateTaskStatus(4, 'running');
-      const email = await generateEmailCampaign(
-        productName,
-        `${research.rawOutput}\n\n${content.rawOutput}\n\n${social.rawOutput}`
-      );
-      updateTaskStatus(4, 'completed', email.rawOutput);
-      setCampaignResult(prev => ({
-        ...prev,
-        emailCampaign: email,
-        status: 'success',
-        currentStep: 4,
-      }));
-
-      setCurrentStep(4);
-    } catch (error) {
-      console.error('Campaign generation error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to generate campaign';
-      setCampaignResult(prev => ({
-        ...prev,
-        status: 'error',
-        error: errorMessage,
-      }));
-      updateTaskStatus(currentStep, 'error');
-    } finally {
-      setIsGenerating(false);
-    }
   };
 
   return (
@@ -282,24 +196,6 @@ const CampaignGenerator = () => {
           )}
         </button>
       </div>
-
-      {isGenerating && (
-        <div className="progress-section">
-          <ProgressTracker tasks={tasks} currentStep={currentStep} />
-        </div>
-      )}
-
-      {campaignResult.status === 'error' && (
-        <div className="error-card">
-          <h3>❌ Error</h3>
-          <p>{campaignResult.error}</p>
-          <p className="error-hint">Make sure the backend server is running and try again.</p>
-        </div>
-      )}
-
-      {campaignResult.status === 'success' && (
-        <ResultsDisplay result={campaignResult} productName={productName} />
-      )}
     </div>
   );
 };
