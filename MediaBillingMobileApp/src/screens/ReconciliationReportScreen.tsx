@@ -1,24 +1,79 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Modal,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import { ReconciliationResult } from '../types';
+import { analyzeDiscrepancy } from '../services/api';
 
 type ReconciliationReportScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'ReconciliationReport'>;
   route: RouteProp<RootStackParamList, 'ReconciliationReport'>;
 };
 
+interface DiscrepancyAnalysis {
+  reasoning: string;
+  remediation_plan: string;
+  priority: string;
+  estimated_impact: string;
+}
+
 const ReconciliationReportScreen: React.FC<ReconciliationReportScreenProps> = ({ navigation, route }) => {
   const { reconciliationData } = route.params;
   const data = reconciliationData as ReconciliationResult;
+
+  const [selectedDiscrepancy, setSelectedDiscrepancy] = useState<any>(null);
+  const [analysisModalVisible, setAnalysisModalVisible] = useState(false);
+  const [currentAnalysis, setCurrentAnalysis] = useState<DiscrepancyAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const handleAnalyzeDiscrepancy = async (discrepancy: any) => {
+    setSelectedDiscrepancy(discrepancy);
+    setIsAnalyzing(true);
+    setAnalysisModalVisible(true);
+    setCurrentAnalysis(null);
+
+    try {
+      const invoiceContext = {
+        vendor_name: data.extracted_data?.invoice_header?.vendor_name || undefined,
+        invoice_number: data.extracted_data?.invoice_header?.invoice_number || undefined,
+      };
+
+      const analysis = await analyzeDiscrepancy(discrepancy, invoiceContext);
+
+      if (analysis.success) {
+        setCurrentAnalysis({
+          reasoning: analysis.reasoning,
+          remediation_plan: analysis.remediation_plan,
+          priority: analysis.priority,
+          estimated_impact: analysis.estimated_impact,
+        });
+      } else {
+        Alert.alert('Error', 'Failed to analyze discrepancy');
+        setAnalysisModalVisible(false);
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to analyze discrepancy');
+      setAnalysisModalVisible(false);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const closeAnalysisModal = () => {
+    setAnalysisModalVisible(false);
+    setSelectedDiscrepancy(null);
+    setCurrentAnalysis(null);
+  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -50,6 +105,52 @@ const ReconciliationReportScreen: React.FC<ReconciliationReportScreenProps> = ({
       default:
         return '#6c757d';
     }
+  };
+
+  const formatAnalysisText = (text: string) => {
+    // Split text into lines and format appropriately
+    const lines = text.split('\n');
+    const formattedElements: JSX.Element[] = [];
+
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) return;
+
+      // Check for section headers (with emojis)
+      if (/^[🎯💰⚠️📊⚡📋🛡️🚨]/.test(trimmedLine)) {
+        formattedElements.push(
+          <Text key={`header-${index}`} style={styles.analysisSectionHeader}>
+            {trimmedLine}
+          </Text>
+        );
+      }
+      // Check for numbered items
+      else if (/^\d+\./.test(trimmedLine)) {
+        formattedElements.push(
+          <Text key={`num-${index}`} style={styles.analysisNumberedItem}>
+            {trimmedLine}
+          </Text>
+        );
+      }
+      // Check for bullet points
+      else if (/^[•\-*]/.test(trimmedLine) || trimmedLine.startsWith('- ')) {
+        formattedElements.push(
+          <Text key={`bullet-${index}`} style={styles.analysisBulletItem}>
+            {trimmedLine.replace(/^[-*]\s/, '• ')}
+          </Text>
+        );
+      }
+      // Regular text
+      else {
+        formattedElements.push(
+          <Text key={`text-${index}`} style={styles.analysisRegularText}>
+            {trimmedLine}
+          </Text>
+        );
+      }
+    });
+
+    return <View>{formattedElements}</View>;
   };
 
   return (
@@ -190,6 +291,16 @@ const ReconciliationReportScreen: React.FC<ReconciliationReportScreenProps> = ({
                     Difference: {disc['Difference %']}%
                   </Text>
                 )}
+                
+                {/* AI Analysis Button */}
+                <TouchableOpacity
+                  style={styles.analyzeButton}
+                  onPress={() => handleAnalyzeDiscrepancy(disc)}
+                >
+                  <Text style={styles.analyzeButtonText}>
+                    🤖 Get AI Reasoning & Remediation
+                  </Text>
+                </TouchableOpacity>
               </View>
             ))}
             {data.discrepancy_report.length > 10 && (
@@ -219,9 +330,105 @@ const ReconciliationReportScreen: React.FC<ReconciliationReportScreenProps> = ({
           <Text style={styles.buttonText}>← Process Another Invoice</Text>
         </TouchableOpacity>
       </View>
+
+      {/* AI Analysis Modal */}
+      <Modal
+        visible={analysisModalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={closeAnalysisModal}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>AI Analysis</Text>
+            <TouchableOpacity onPress={closeAnalysisModal}>
+              <Text style={styles.closeButton}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {isAnalyzing && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={styles.loadingText}>Analyzing discrepancy...</Text>
+                <Text style={styles.loadingSubtext}>
+                  Our AI is reviewing the data and generating insights
+                </Text>
+              </View>
+            )}
+
+            {!isAnalyzing && currentAnalysis && (
+              <>
+                {selectedDiscrepancy && (
+                  <View style={styles.analysisContext}>
+                    <Text style={styles.contextTitle}>Discrepancy Details</Text>
+                    <Text style={styles.contextText}>
+                      Campaign: {selectedDiscrepancy.Campaign}
+                    </Text>
+                    <Text style={styles.contextText}>
+                      Field: {selectedDiscrepancy.Field}
+                    </Text>
+                    <View style={styles.contextValueRow}>
+                      <Text style={styles.contextText}>
+                        Extracted: {selectedDiscrepancy['Extracted Value']}
+                      </Text>
+                      <Text style={styles.contextText}>
+                        Planned: {selectedDiscrepancy['Planned Value']}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                <View style={styles.analysisSection}>
+                  <View style={styles.analysisBadgeRow}>
+                    <View style={[styles.priorityBadge, getPriorityStyle(currentAnalysis.priority)]}>
+                      <Text style={styles.priorityBadgeText}>
+                        {currentAnalysis.priority} PRIORITY
+                      </Text>
+                    </View>
+                    <Text style={styles.impactText}>{currentAnalysis.estimated_impact}</Text>
+                  </View>
+
+                  <View style={styles.analysisBlock}>
+                    <Text style={styles.analysisBlockTitle}>🔍 Reasoning</Text>
+                    {formatAnalysisText(currentAnalysis.reasoning)}
+                  </View>
+
+                  <View style={styles.analysisBlock}>
+                    <Text style={styles.analysisBlockTitle}>📋 Remediation Plan</Text>
+                    {formatAnalysisText(currentAnalysis.remediation_plan)}
+                  </View>
+                </View>
+              </>
+            )}
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={[styles.button, styles.primaryButton]}
+              onPress={closeAnalysisModal}
+            >
+              <Text style={styles.buttonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
+
+function getPriorityStyle(priority: string) {
+  switch (priority) {
+    case 'URGENT':
+      return { backgroundColor: '#dc3545' };
+    case 'HIGH':
+      return { backgroundColor: '#fd7e14' };
+    case 'MEDIUM':
+      return { backgroundColor: '#ffc107' };
+    default:
+      return { backgroundColor: '#28a745' };
+  }
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -388,6 +595,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontWeight: '600',
   },
+  analyzeButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 6,
+    padding: 10,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  analyzeButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   moreText: {
     textAlign: 'center',
     color: '#666',
@@ -427,6 +646,152 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#007AFF',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  closeButton: {
+    fontSize: 28,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  modalContent: {
+    flex: 1,
+    padding: 16,
+  },
+  modalFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginTop: 20,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  analysisContext: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 20,
+  },
+  contextTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    marginBottom: 12,
+  },
+  contextText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 6,
+  },
+  contextValueRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  analysisSection: {
+    gap: 20,
+  },
+  analysisBadgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  priorityBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  priorityBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  impactText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+  },
+  analysisBlock: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  analysisBlockTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    marginBottom: 12,
+  },
+  analysisBlockText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 22,
+  },
+  // Analysis Text Formatting
+  analysisSectionHeader: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    marginTop: 12,
+    marginBottom: 8,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  analysisNumberedItem: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 22,
+    marginBottom: 6,
+    fontWeight: '500',
+  },
+  analysisBulletItem: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 22,
+    marginBottom: 6,
+    paddingLeft: 10,
+  },
+  analysisRegularText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 22,
+    marginBottom: 6,
   },
 });
 

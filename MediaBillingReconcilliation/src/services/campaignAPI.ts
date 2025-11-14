@@ -70,3 +70,42 @@ export const reconcileInvoice = async (
 
   return response.data;
 };
+
+// Analyze a single discrepancy using AI
+export const analyzeDiscrepancy = async (
+  discrepancy: any,
+  invoiceContext: { vendor_name?: string; invoice_number?: string }
+): Promise<{
+  success: boolean;
+  reasoning: string;
+  remediation_plan: string;
+  priority: string;
+  priority_score: number;
+  estimated_impact: string;
+}> => {
+  const response = await axios.post(`${API_BASE_URL}/analyze-discrepancy`, {
+    discrepancy,
+    invoice_context: invoiceContext,
+  });
+
+  return response.data;
+};
+
+// Analyze multiple discrepancies in batch
+export const analyzeDiscrepanciesBatch = async (
+  discrepancies: any[],
+  invoiceContext: { vendor_name?: string; invoice_number?: string },
+  maxAnalyses: number = 10
+): Promise<{
+  success: boolean;
+  analyzed_count: number;
+  results: any[];
+}> => {
+  const response = await axios.post(`${API_BASE_URL}/analyze-discrepancies-batch`, {
+    discrepancies,
+    invoice_context: invoiceContext,
+    max_analyses: maxAnalyses,
+  });
+
+  return response.data;
+};

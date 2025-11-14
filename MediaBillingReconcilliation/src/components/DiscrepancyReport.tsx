@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ReconciliationResult } from '../types';
+import { analyzeDiscrepancy } from '../services/campaignAPI';
 import './DiscrepancyReport.css';
 
 interface Discrepancy {
@@ -15,12 +16,23 @@ interface Discrepancy {
   severity: string;
 }
 
+interface DiscrepancyAnalysis {
+  reasoning: string;
+  remediation_plan: string;
+  priority: string;
+  estimated_impact: string;
+}
+
 const DiscrepancyReport: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const reconciliationData = location.state?.reconciliationData as ReconciliationResult;
 
   const [discrepancies, setDiscrepancies] = useState<Discrepancy[]>([]);
+  const [selectedDiscrepancy, setSelectedDiscrepancy] = useState<Discrepancy | null>(null);
+  const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
+  const [currentAnalysis, setCurrentAnalysis] = useState<DiscrepancyAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     if (!reconciliationData) {
@@ -63,6 +75,114 @@ const DiscrepancyReport: React.FC = () => {
 
   const handleStartNew = () => {
     navigate('/extractor');
+  };
+
+  const handleAnalyzeDiscrepancy = async (disc: Discrepancy) => {
+    setSelectedDiscrepancy(disc);
+    setIsAnalyzing(true);
+    setAnalysisModalOpen(true);
+    setCurrentAnalysis(null);
+
+    try {
+      const invoiceContext = {
+        vendor_name: reconciliationData.extracted_data?.invoice_header?.vendor_name || undefined,
+        invoice_number: reconciliationData.extracted_data?.invoice_header?.invoice_number || undefined,
+      };
+
+      const discrepancyData = {
+        Campaign: disc.campaign,
+        Field: disc.field,
+        'Extracted Value': String(disc.invoiceValue),
+        'Planned Value': String(disc.plannedValue),
+        'Difference': String(disc.difference),
+        'Difference %': disc.differencePercent ? String(disc.differencePercent) : 'N/A',
+        Severity: disc.severity
+      };
+
+      const analysis = await analyzeDiscrepancy(discrepancyData, invoiceContext);
+
+      if (analysis.success) {
+        setCurrentAnalysis({
+          reasoning: analysis.reasoning,
+          remediation_plan: analysis.remediation_plan,
+          priority: analysis.priority,
+          estimated_impact: analysis.estimated_impact,
+        });
+      } else {
+        alert('Failed to analyze discrepancy');
+        setAnalysisModalOpen(false);
+      }
+    } catch (error: any) {
+      alert(error.message || 'Failed to analyze discrepancy');
+      setAnalysisModalOpen(false);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const closeAnalysisModal = () => {
+    setAnalysisModalOpen(false);
+    setSelectedDiscrepancy(null);
+    setCurrentAnalysis(null);
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'URGENT':
+        return '#dc3545';
+      case 'HIGH':
+        return '#fd7e14';
+      case 'MEDIUM':
+        return '#ffc107';
+      default:
+        return '#28a745';
+    }
+  };
+
+  const formatAnalysisText = (text: string): JSX.Element => {
+    // Convert text to HTML with proper line breaks and formatting
+    const lines = text.split('\n');
+    const elements: JSX.Element[] = [];
+    
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) return;
+
+      // Check if line is a section header (contains emoji or ends with :)
+      if (trimmedLine.match(/^[🎯💰⚠️📊⚡📋🛡️🚨🔍]/)) {
+        elements.push(
+          <div key={index} className="analysis-section-header">
+            {trimmedLine}
+          </div>
+        );
+      }
+      // Check if line is a numbered item
+      else if (trimmedLine.match(/^\d+\.\s/)) {
+        elements.push(
+          <div key={index} className="analysis-item numbered">
+            {trimmedLine}
+          </div>
+        );
+      }
+      // Check if line is a bullet point
+      else if (trimmedLine.match(/^[•\-\*]\s/) || trimmedLine.startsWith('- ')) {
+        elements.push(
+          <div key={index} className="analysis-item bullet">
+            {trimmedLine.replace(/^[•\-\*]\s/, '• ')}
+          </div>
+        );
+      }
+      // Regular text
+      else {
+        elements.push(
+          <div key={index} className="analysis-text">
+            {trimmedLine}
+          </div>
+        );
+      }
+    });
+
+    return <>{elements}</>;
   };
 
   const formatValue = (value: any): string => {
@@ -275,6 +395,7 @@ const DiscrepancyReport: React.FC = () => {
                   <th>Planned Value</th>
                   <th>Difference</th>
                   <th>Severity</th>
+                  <th>AI Analysis</th>
                 </tr>
               </thead>
               <tbody>
@@ -292,6 +413,15 @@ const DiscrepancyReport: React.FC = () => {
                       <span className={`severity-badge ${disc.severity.toLowerCase()}`}>
                         {disc.severity}
                       </span>
+                    </td>
+                    <td className="action-cell">
+                      <button 
+                        className="btn-analyze"
+                        onClick={() => handleAnalyzeDiscrepancy(disc)}
+                        title="Get AI reasoning and remediation plan"
+                      >
+                        🤖 Analyze
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -362,6 +492,80 @@ const DiscrepancyReport: React.FC = () => {
           Start New Reconciliation
         </button>
       </div>
+
+      {/* AI Analysis Modal */}
+      {analysisModalOpen && (
+        <div className="modal-overlay" onClick={closeAnalysisModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>🤖 AI Discrepancy Analysis</h2>
+              <button className="modal-close" onClick={closeAnalysisModal}>×</button>
+            </div>
+
+            <div className="modal-body">
+              {isAnalyzing && (
+                <div className="loading-container">
+                  <div className="spinner"></div>
+                  <p className="loading-text">Analyzing discrepancy with AI...</p>
+                  <p className="loading-subtext">Our AI is reviewing the data and generating insights</p>
+                </div>
+              )}
+
+              {!isAnalyzing && currentAnalysis && selectedDiscrepancy && (
+                <>
+                  <div className="analysis-context">
+                    <h3>Discrepancy Details</h3>
+                    <div className="context-grid">
+                      <div className="context-item">
+                        <strong>Campaign:</strong> {selectedDiscrepancy.campaign}
+                      </div>
+                      <div className="context-item">
+                        <strong>Field:</strong> {selectedDiscrepancy.field}
+                      </div>
+                      <div className="context-item">
+                        <strong>Extracted:</strong> {formatValue(selectedDiscrepancy.invoiceValue)}
+                      </div>
+                      <div className="context-item">
+                        <strong>Planned:</strong> {formatValue(selectedDiscrepancy.plannedValue)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="analysis-badges">
+                    <span 
+                      className="priority-badge" 
+                      style={{ backgroundColor: getPriorityColor(currentAnalysis.priority) }}
+                    >
+                      {currentAnalysis.priority} PRIORITY
+                    </span>
+                    <span className="impact-badge">{currentAnalysis.estimated_impact}</span>
+                  </div>
+
+                  <div className="analysis-section">
+                    <h3>🔍 Reasoning</h3>
+                    <div className="analysis-content">
+                      {formatAnalysisText(currentAnalysis.reasoning)}
+                    </div>
+                  </div>
+
+                  <div className="analysis-section">
+                    <h3>📋 Remediation Plan</h3>
+                    <div className="analysis-content remediation-plan">
+                      {formatAnalysisText(currentAnalysis.remediation_plan)}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={closeAnalysisModal}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

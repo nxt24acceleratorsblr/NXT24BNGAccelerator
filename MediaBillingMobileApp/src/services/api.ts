@@ -85,3 +85,38 @@ export const healthCheck = async (): Promise<{ status: string; service: string }
   const response = await api.get('/health');
   return response.data;
 };
+
+export const analyzeDiscrepancy = async (
+  discrepancy: any,
+  invoiceContext: { vendor_name?: string; invoice_number?: string }
+): Promise<{
+  success: boolean;
+  reasoning: string;
+  remediation_plan: string;
+  priority: string;
+  priority_score: number;
+  estimated_impact: string;
+}> => {
+  const response = await api.post('/analyze-discrepancy', {
+    discrepancy,
+    invoice_context: invoiceContext,
+  });
+  return response.data;
+};
+
+export const analyzeDiscrepanciesBatch = async (
+  discrepancies: any[],
+  invoiceContext: { vendor_name?: string; invoice_number?: string },
+  maxAnalyses: number = 10
+): Promise<{
+  success: boolean;
+  analyzed_count: number;
+  results: any[];
+}> => {
+  const response = await api.post('/analyze-discrepancies-batch', {
+    discrepancies,
+    invoice_context: invoiceContext,
+    max_analyses: maxAnalyses,
+  });
+  return response.data;
+};

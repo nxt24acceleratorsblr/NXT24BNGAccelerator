@@ -281,6 +281,84 @@ def get_vendor_scores():
             'traceback': traceback.format_exc()
         }), 500
 
+@app.route('/api/analyze-discrepancy', methods=['POST'])
+def analyze_discrepancy():
+    """
+    Analyze a single discrepancy using AI to provide reasoning and remediation plan.
+    Body:
+        - discrepancy: Dict with Campaign, Field, values, severity
+        - invoice_context: Dict with vendor_name, invoice_number (optional)
+    Returns: Analysis with reasoning, remediation plan, priority
+    """
+    try:
+        from services.discrepancy_agent import analyze_single_discrepancy
+        
+        if not request.is_json:
+            return jsonify({'error': 'Request must be JSON'}), 400
+        
+        discrepancy = request.json.get('discrepancy')
+        invoice_context = request.json.get('invoice_context', {})
+        
+        if not discrepancy:
+            return jsonify({'error': 'discrepancy data required'}), 400
+        
+        # Run AI analysis
+        analysis = analyze_single_discrepancy(discrepancy, invoice_context)
+        
+        return jsonify(analysis)
+    
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
+@app.route('/api/analyze-discrepancies-batch', methods=['POST'])
+def analyze_discrepancies_batch():
+    """
+    Analyze multiple discrepancies using AI (batch processing).
+    Body:
+        - discrepancies: List of discrepancy dicts
+        - invoice_context: Dict with vendor_name, invoice_number
+        - max_analyses: Max number to analyze with AI (default: 10, for cost control)
+    Returns: List of analyzed discrepancies with reasoning and remediation
+    """
+    try:
+        from services.discrepancy_agent import analyze_batch_discrepancies
+        
+        if not request.is_json:
+            return jsonify({'error': 'Request must be JSON'}), 400
+        
+        discrepancies = request.json.get('discrepancies', [])
+        invoice_context = request.json.get('invoice_context', {})
+        max_analyses = request.json.get('max_analyses', 10)
+        
+        if not discrepancies:
+            return jsonify({'error': 'discrepancies list required'}), 400
+        
+        # Run batch analysis
+        results = analyze_batch_discrepancies(
+            discrepancies,
+            invoice_context,
+            max_analyses=max_analyses
+        )
+        
+        return jsonify({
+            'success': True,
+            'analyzed_count': len(results),
+            'results': results
+        })
+    
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
 if __name__ == '__main__':
     print("🚀 Starting iPhone 17 Campaign Generator API...")
     print(f"📁 Upload folder: {UPLOAD_FOLDER}")
