@@ -86,15 +86,25 @@ const InvoiceExtractorScreen: React.FC<InvoiceExtractorScreenProps> = ({ navigat
 
   const formatCurrency = (amount: number | null, currency: string | null = 'USD') => {
     if (amount === null) return 'N/A';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency || 'USD',
-    }).format(amount);
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || 'USD',
+      }).format(amount);
+    } catch (error) {
+      // Fallback if Intl is not available
+      return `${currency || 'USD'} ${formatNumber(amount)}`;
+    }
   };
 
   const formatNumber = (num: number | null) => {
     if (num === null) return 'N/A';
-    return num.toLocaleString();
+    // React Native safe number formatting
+    const numStr = Math.abs(num).toString();
+    const parts = numStr.split('.');
+    const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const decimalPart = parts[1] ? '.' + parts[1] : '';
+    return (num < 0 ? '-' : '') + integerPart + decimalPart;
   };
 
   return (

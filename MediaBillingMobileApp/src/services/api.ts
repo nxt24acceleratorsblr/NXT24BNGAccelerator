@@ -1,11 +1,14 @@
 import axios from 'axios';
 import { InvoiceExtractionResult, ReconciliationResult } from '../types';
 
-// Update this to your backend URL - default to localhost
-const API_BASE_URL = 'http://localhost:5000/api';
+// Update this to your backend URL
+// For Android Emulator, use 10.0.2.2 (which redirects to host's localhost)
+// For iOS Simulator, use localhost or your computer's IP
+// For Physical Device, use your computer's actual IP address (e.g., 192.168.x.x)
 
-// For testing on physical device, replace localhost with your computer's IP
-// Example: const API_BASE_URL = 'http://192.168.1.100:5000/api';
+const API_BASE_URL = 'http://10.0.2.2:5000/api';  // Android Emulator
+// const API_BASE_URL = 'http://localhost:5000/api';  // iOS Simulator
+// const API_BASE_URL = 'http://192.168.1.100:5000/api';  // Physical Device (update IP)
 
 const api = axios.create({
   baseURL: API_BASE_URL,
