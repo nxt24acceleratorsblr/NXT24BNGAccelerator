@@ -173,16 +173,19 @@ const InvoiceExtractor: React.FC = () => {
 
   return (
     <div className="invoice-extractor">
-      <div className="extractor-header">
-        <h1>Upload Your Invoice for Reconciliation</h1>
-      </div>
+      {/* Show header only when no extraction result */}
+      {!extractionResult && (
+        <div className="extractor-header">
+          <h1>Upload Your Invoice for Reconciliation</h1>
+        </div>
+      )}
 
       <div className="extractor-content">
         {/* Show upload section only when not extracting and no results */}
         {!isExtracting && !extractionResult && (
           <>
             {/* Supported Formats */}
-            <p className="supported-formats">Supported Formats: PDF, XLS, CSV, Email (.eml), Images (PNG/JPG), HTML, TXT</p>
+            <p className="supported-formats">Supported Formats: PDF, XLS, CSV, Images (PNG/JPG), HTML, Text</p>
 
             {/* File Upload Section */}
             <div className="upload-section">
@@ -200,7 +203,7 @@ const InvoiceExtractor: React.FC = () => {
               disabled={isExtracting}
               id="invoice-file"
               multiple
-              accept=".pdf,.xls,.xlsx,.csv,.eml,.png,.jpg,.jpeg,.html,.htm,.txt"
+              accept=".pdf,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.html,.htm,.txt"
             />
             <label htmlFor="invoice-file" className="file-upload-label">
               <div className="upload-prompt">
@@ -208,7 +211,7 @@ const InvoiceExtractor: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
                 <p className="upload-text">Drop files here <span className="or-text">OR</span> Browse</p>
-                <p className="upload-hint">You can upload multiple invoices</p>
+                <p className="upload-hint">You can upload invoice file</p>
               </div>
             </label>
           </div>
